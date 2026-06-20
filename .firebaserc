@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-rummle"
+    "default": "demo-rummle",
+    "prod": "rummle-prod"
   }
 }
