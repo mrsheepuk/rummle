@@ -42,7 +42,6 @@ function analyzeGroup(tiles: readonly Tile[]): MeldAnalysis {
   }
 
   const numbers = tiles.filter((t): t is Extract<Tile, { kind: "number" }> => t.kind === "number");
-  const jokerCount = tiles.length - numbers.length;
 
   if (numbers.length === 0) {
     return { valid: false, points: 0, reason: "A group needs at least one numbered tile" };
