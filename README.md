@@ -89,26 +89,32 @@ Three GitHub Actions workflows are included:
 | `firebase-hosting-pull-request.yml` | every PR | deploys a **preview channel** and comments the URL |
 | `firebase-hosting-merge.yml` | push to `main` | deploys to the **live** channel |
 
+The deploy workflows target the **`rummle-prod`** project (kept as the `prod`
+alias in `.firebaserc`; `default` stays `demo-rummle` so local dev stays
+offline). The project id and auth domain are non-secret and hardcoded in the
+workflows, so only two repository secrets are needed.
+
 ### One-time setup (do this once in the Firebase console + GitHub)
 
-1. Create a Firebase project and enable **Hosting** and **Anonymous Auth**.
+1. Create the Firebase project and enable **Hosting** and **Anonymous Auth**.
 2. Wire the service account + secret automatically:
    ```bash
-   npm i -g firebase-tools
    firebase login
-   firebase init hosting:github     # links this repo, creates FIREBASE_SERVICE_ACCOUNT secret
+   firebase use --add                 # add the real project as the `prod` alias
+   firebase init hosting:github --project prod
    ```
-   (The included workflows already do the build/deploy, so you can decline its
-   offer to overwrite them — you just want the service-account secret it sets up.)
-   Alternatively, create a service account key manually and add it as the
-   repository secret **`FIREBASE_SERVICE_ACCOUNT`**.
-3. Add a repository **variable** `FIREBASE_PROJECT_ID` = your project id.
-4. Add repository **secrets** for the web config used at build time:
-   `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_APP_ID`.
-5. Deploy the security rules once: `firebase deploy --only firestore:rules`.
+   Decline when it offers to overwrite the workflow files (keep the ones here);
+   you just want the service-account secret it uploads — created here as
+   **`FIREBASE_SERVICE_ACCOUNT_RUMMLE_PROD`**.
+3. Add repository **secrets** for the web config used at build time (from the
+   console: Project settings → Your apps → SDK config):
+   `VITE_FIREBASE_API_KEY` and `VITE_FIREBASE_APP_ID`.
+4. Deploy the security rules once: `firebase deploy --only firestore:rules --project prod`.
 
-Until steps 2–4 are done the two Firebase workflows will fail (missing
-secret) — that's expected; the `ci.yml` check passes regardless.
+Until the secrets exist the two Firebase workflows fail (expected); the
+`ci.yml` check passes regardless. If you rename the project, update the
+hardcoded `rummle-prod` / secret name in the two `firebase-hosting-*.yml`
+workflows.
 
 ## Cheat safety (current trade-off)
 
