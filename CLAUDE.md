@@ -32,6 +32,8 @@ stays unit-tested and could move server-side later:
     `codes.ts` join-code generator.
 - `src/ui/` — React. `App.tsx` routes via `useHashRoute` (`#/g/CODE`).
   `Home` → `Lobby` → `GameView`; `Board.tsx` is the dnd-kit play surface.
+  `TileView.tsx` renders tiles · `sounds.ts` Web-Audio SFX · `useAuth`/`useGame`
+  hooks subscribe to auth + the game doc.
 
 Data flow: UI calls `sync/gameSync` → runs a `state/engine` pure function inside
 a Firestore transaction → `onSnapshot` pushes new state back to all clients.
@@ -51,6 +53,24 @@ a Firestore transaction → `onSnapshot` pushes new state back to all clients.
   around locally; illegality (e.g. taking a table tile into hand before opening)
   is rejected on **Commit** by `validateCommit`, surfaced as an error. A
   stricter live UI is a known follow-up.
+- **The rack is a free-form slot grid, not a list.** `Board.tsx` keeps the rack
+  as `(string | null)[]` slots (gaps allowed; drop-on-occupied swaps) and the
+  table as ordered meld lists. On every game update it **reconciles** (adds
+  drawn tiles, drops played ones) rather than resetting, so a player's sorting
+  persists; layout is saved to `localStorage` (`rummle:rack:{gameId}:{uid}`).
+  Rack rearranging is allowed any time; table edits only on your turn. Uses
+  pointer-first collision detection (`pointerWithin` → `rectIntersection` →
+  `closestCorners`) — plain `closestCorners` mis-targets large/wrapped zones.
+- **Rejoin works per-browser.** `addPlayer` lets an existing uid rejoin even
+  after start (only new players are blocked); the anonymous uid persists in the
+  browser, so reopening `#/g/CODE` resumes you. Cross-device rejoin would need a
+  portable player token (not done).
+- **Tiles must not rely on colour alone** (a player is colour-blind). Each suit
+  has a distinct shape pip (● blue ▲ red ◆ orange ■ black) plus a
+  contrast-tuned digit; keep that redundancy in `TileView.tsx` / palette.
+- **Sounds are synthesised, no asset files.** `sounds.ts` uses the Web Audio
+  API; the context resumes on first user gesture. Mute persists in
+  `localStorage`.
 - **Emulator-first dev.** `.env` has `VITE_USE_EMULATOR=true`; `firebase.ts`
   connects to the local Auth/Firestore emulators on 127.0.0.1.
 
@@ -58,7 +78,7 @@ a Firestore transaction → `onSnapshot` pushes new state back to all clients.
 
 ```bash
 npm run dev:all     # emulators + Vite together (main dev loop)
-npm test            # Vitest (engine + state); 38 tests
+npm test            # Vitest (engine + state); 40 tests
 npm run typecheck   # tsc -b, must stay clean
 npm run build       # production build
 node scripts/smoke.mjs   # end-to-end sync test (needs emulators running)
@@ -71,9 +91,21 @@ changes.
 
 `.github/workflows/`: `ci.yml` (typecheck+test+build, no secrets) runs on every
 PR; `firebase-hosting-pull-request.yml` deploys a preview channel per PR;
-`firebase-hosting-merge.yml` deploys live on push to `main`. The two Firebase
-workflows need repo secrets (`FIREBASE_SERVICE_ACCOUNT`, `VITE_FIREBASE_*`) and
-var `FIREBASE_PROJECT_ID` — see README "Deployment (CI/CD)".
+`firebase-hosting-merge.yml` deploys live on push to `main`.
+
+- Deploys target the **`rummle-prod`** project (hardcoded in the workflows;
+  kept as the `prod` alias in `.firebaserc`, while `default` stays
+  `demo-rummle` for offline dev). Project id + auth domain are non-secret and
+  hardcoded.
+- Required repo **secrets**: `FIREBASE_SERVICE_ACCOUNT_RUMMLE_PROD` (service
+  account JSON, created by `firebase init hosting:github`), plus
+  `VITE_FIREBASE_API_KEY` and `VITE_FIREBASE_APP_ID` (the only project-specific
+  build values). Note the Firebase web API key is **not** secret — it ships in
+  the client bundle.
+- Build runs on Node 22; actions are `actions/checkout@v7`,
+  `actions/setup-node@v6`, `FirebaseExtended/action-hosting-deploy@v0` (the
+  deploy step still warns about Node 20 — upstream, unavoidable for now).
+- See README "Deployment (CI/CD)" for the one-time setup steps.
 
 ## Conventions
 
