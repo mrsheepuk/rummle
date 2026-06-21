@@ -1,68 +1,70 @@
 /* ============================================================
-   Rummle — "Parlour" theme
-   Warm card-room palette. Light by default; dark take applied
-   automatically for users whose OS prefers dark (no toggle needed).
-   Two typefaces: Bricolage Grotesque (wordmark) + Work Sans (all UI).
-   Drop-in replacement for src/index.css — class names unchanged.
+   Rummle — "Knack" theme (vintage tabletop)
+   Racing-green felt, rosewood, aged ivory, mustard + oxblood.
+   Light by default; dark applied automatically via prefers-color-scheme.
+   Wordmark: Yeseva One. All other UI + tile numerals: Work Sans.
+   Drop-in replacement for src/index.css — class names unchanged,
+   plus a few new ones used by the updated GameView (menu, action button).
    ============================================================ */
 
 :root {
   /* surfaces */
-  --bg: #efe3ca;          /* page */
-  --bg-card: #f7eed9;     /* cards / rails */
-  --bg-soft: #efe4cc;     /* secondary buttons, chips */
-  --bg-input: #ffffff;    /* inputs, code boxes */
-  --line: rgba(58, 44, 22, 0.12);
-  --text: #3a352b;
-  --muted: #948b78;
+  --bg: #e9ddc0;          /* page (aged paper) */
+  --bg-card: #efe4c8;     /* cards / rails */
+  --bg-soft: #e6d7b6;     /* secondary buttons, chips */
+  --bg-input: #f7f0dc;    /* inputs, code boxes, menu */
+  --line: rgba(58, 44, 22, 0.14);
+  --text: #2f291f;
+  --muted: #948b73;
 
   /* brand */
-  --primary: #1f6b4f;          /* emerald — primary actions */
-  --primary-dark: #185940;
-  --primary-text: #fbf3e0;     /* text on primary */
-  --amber: #e8a23d;            /* warm accent (logo dot, codes) */
-  --danger: #c0432f;
+  --primary: #9e3b2f;          /* oxblood — primary action (Commit) */
+  --primary-dark: #883227;
+  --primary-text: #f1e7cb;
+  --green: #1c4733;            /* racing green — wordmark, codes, draw, active turn */
+  --accent: #d29b32;           /* mustard — avatars, dot, highlights */
+  --danger: #b23a2a;
 
-  /* materials (shared across light + dark) */
-  --felt-hi: #2f8a68;
-  --felt-lo: #1f6b4f;
-  --wood-hi: #c2914f;
-  --wood-lo: #8a5e2e;
-  --tray: rgba(0, 0, 0, 0.22);
+  /* materials (shared light + dark) */
+  --felt-hi: #2b5e40;
+  --felt-lo: #173a26;
+  --wood-hi: #9c4d3a;          /* rosewood */
+  --wood-lo: #5f2d22;
+  --tray: rgba(0, 0, 0, 0.26);
 
-  --tile-bg-1: #fdf6e6;
-  --tile-bg-2: #f4e9cf;
-  --tile-bg-3: #ecddb6;
+  --tile-bg-1: #efe3c2;        /* aged ivory */
+  --tile-bg-2: #e6d7b0;
+  --tile-bg-3: #d9c699;
 
-  /* suit inks — each suit also carries a distinct SHAPE pip (see TileView),
-     so suits never rely on colour alone (colour-blind safe). */
+  /* suit inks — paired with distinct SHAPE pips in TileView (colour-blind safe) */
   --blue-ink:  #1f7fb8;  --blue-pip:  #1f7fb8;
   --red-ink:   #d8503c;  --red-pip:   #d8503c;
   --orange-ink:#e8852b;  --orange-pip:#e8852b;
   --black-ink: #3a352d;  --black-pip: #3a352d;
 
-  --page-hi: #f8efda;    /* top of the page radial */
+  --page-hi: #f0e6cb;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14201a;
-    --bg-card: #1a2a22;
-    --bg-soft: #21342a;
-    --bg-input: #21342a;
+    --bg: #1d1810;
+    --bg-card: #251e13;
+    --bg-soft: #2e2517;
+    --bg-input: #2c2417;
     --line: rgba(255, 255, 255, 0.10);
-    --text: #f3e8cf;
-    --muted: #8ba194;
+    --text: #e3d4ad;
+    --muted: #a2967a;
 
-    --primary: #e8a23d;        /* amber reads better than green-on-green */
-    --primary-dark: #d6912f;
-    --primary-text: #16241d;
-    --amber: #e8a23d;
-    --danger: #e87a63;
+    --primary: #b8483a;        /* brightened oxblood so it reads on espresso */
+    --primary-dark: #a23d31;
+    --primary-text: #f5ecd4;
+    --green: #2f7a52;          /* lifted green for buttons/active on dark */
+    --accent: #d9a73f;
+    --danger: #e08163;
 
-    --tray: rgba(0, 0, 0, 0.3);
-    --page-hi: #1b2a22;
+    --tray: rgba(0, 0, 0, 0.32);
+    --page-hi: #251e13;
     color-scheme: dark;
   }
 }
@@ -90,16 +92,17 @@ body {
   flex-direction: column;
 }
 
+/* Wordmark — vintage serif, racing green, with a mustard dot. */
 .logo {
-  font-family: "Bricolage Grotesque", "Work Sans", sans-serif;
-  font-size: 2.6rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-family: "Yeseva One", Georgia, serif;
+  font-weight: 400;
+  font-size: 2.7rem;
+  letter-spacing: 0;
   margin: 0;
-  color: var(--primary);
+  color: var(--green);
   display: inline-flex;
   align-items: center;
-  gap: 0.42rem;
+  gap: 0.45rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -110,10 +113,10 @@ body {
 
 .logo::before {
   content: "";
-  width: 0.6em;
-  height: 0.6em;
+  width: 0.5em;
+  height: 0.5em;
   border-radius: 50%;
-  background: var(--amber);
+  background: var(--accent);
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.45);
 }
 
@@ -151,9 +154,9 @@ body {
 }
 
 .card h2 {
-  font-family: "Bricolage Grotesque", "Work Sans", sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-family: "Yeseva One", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: 0;
   margin: 0 0 0.2rem;
   color: var(--text);
 }
@@ -163,9 +166,9 @@ body {
   flex-direction: column;
   gap: 0.4rem;
   text-align: left;
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -187,7 +190,7 @@ input::placeholder {
 }
 
 input:focus {
-  outline: 2px solid var(--amber);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
   border-color: transparent;
 }
@@ -198,13 +201,7 @@ input:focus {
   text-align: center;
   font-weight: 800;
   font-size: 1.4rem;
-  color: var(--primary);
-}
-
-@media (prefers-color-scheme: dark) {
-  .code-input {
-    color: var(--amber);
-  }
+  color: var(--green);
 }
 
 .join-row {
@@ -240,7 +237,6 @@ input:focus {
 }
 
 .btn:hover {
-  box-shadow: inset 0 0 0 1px var(--line);
   background: var(--bg-soft);
 }
 
@@ -257,17 +253,11 @@ input:focus {
   background: var(--primary);
   border-color: transparent;
   color: var(--primary-text);
-  box-shadow: 0 3px 10px -2px rgba(31, 107, 79, 0.5);
+  box-shadow: 0 3px 10px -2px rgba(158, 59, 47, 0.5);
 }
 
 .btn-primary:hover {
   background: var(--primary-dark);
-}
-
-@media (prefers-color-scheme: dark) {
-  .btn-primary {
-    box-shadow: 0 3px 10px -2px rgba(0, 0, 0, 0.4);
-  }
 }
 
 .btn-small {
@@ -283,6 +273,23 @@ input:focus {
   text-underline-offset: 2px;
   padding: 0.4rem;
   font-weight: 600;
+}
+
+/* Square icon button (the game-bar menu trigger). */
+.btn-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.btn-icon.is-active {
+  background: var(--green);
+  border-color: transparent;
+  color: #ede2c6;
 }
 
 .error {
@@ -311,7 +318,7 @@ input:focus {
 }
 
 .code-label {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -322,14 +329,8 @@ input:focus {
   font-size: 1.4rem;
   font-weight: 800;
   letter-spacing: 0.3em;
-  color: var(--primary);
+  color: var(--green);
   flex: 1;
-}
-
-@media (prefers-color-scheme: dark) {
-  .code-value {
-    color: var(--amber);
-  }
 }
 
 .player-list {
@@ -353,8 +354,8 @@ input:focus {
 }
 
 .player-list li.me {
-  border-color: var(--primary);
-  box-shadow: inset 0 0 0 1px var(--primary);
+  border-color: var(--green);
+  box-shadow: inset 0 0 0 1px var(--green);
 }
 
 .player-list .empty-slot {
@@ -368,8 +369,8 @@ input:focus {
   height: 1.7rem;
   display: grid;
   place-items: center;
-  background: var(--amber);
-  color: #5a3a12;
+  background: var(--accent);
+  color: #3a2708;
   border-radius: 50%;
   font-weight: 800;
   font-size: 0.85rem;
@@ -386,7 +387,7 @@ input:focus {
 }
 
 .badge {
-  font-size: 0.66rem;
+  font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -398,8 +399,8 @@ input:focus {
 }
 
 .badge-you {
-  background: var(--primary);
-  color: var(--primary-text);
+  background: var(--green);
+  color: #ede2c6;
   border-color: transparent;
 }
 
@@ -436,21 +437,20 @@ input:focus {
   background: var(--bg-card);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 0.32rem 0.7rem;
+  padding: 0.32rem 0.7rem 0.32rem 0.4rem;
   font-size: 0.85rem;
   font-weight: 600;
 }
 
 .turn-chip.active {
-  background: var(--primary);
+  background: var(--green);
   border-color: transparent;
-  color: var(--primary-text);
-  box-shadow: 0 2px 8px -1px rgba(31, 107, 79, 0.45);
+  color: #ede2c6;
 }
 
 .turn-chip.active .chip-count {
-  background: rgba(0, 0, 0, 0.18);
-  color: var(--primary-text);
+  background: rgba(0, 0, 0, 0.22);
+  color: #ede2c6;
 }
 
 .turn-chip.me .chip-name {
@@ -475,11 +475,89 @@ input:focus {
   color: var(--muted);
 }
 
+.pool-count {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.32rem 0.7rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ----- Overflow menu (Sort tray / Reset / Mute / Leave) ----- */
+.menu {
+  position: relative;
+}
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  width: 190px;
+  background: var(--bg-input);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  z-index: 30;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.72rem 0.85rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-item:hover:not(:disabled) {
+  background: var(--bg-soft);
+}
+
+.menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.menu-item .menu-ico {
+  width: 1.1rem;
+  text-align: center;
+  color: var(--primary);
+  flex: none;
+}
+
+.menu-item.danger {
+  color: var(--primary);
+}
+
+.menu-item.danger .menu-ico {
+  color: var(--primary);
+}
+
 .winner-banner {
-  background: linear-gradient(120deg, var(--primary), var(--amber));
-  color: #16241d;
-  font-family: "Bricolage Grotesque", "Work Sans", sans-serif;
-  font-weight: 800;
+  background: linear-gradient(120deg, var(--green), var(--accent));
+  color: #1a1208;
+  font-family: "Yeseva One", Georgia, serif;
+  font-weight: 400;
   text-align: center;
   padding: 0.8rem;
   border-radius: 14px;
@@ -489,18 +567,18 @@ input:focus {
 .table-area {
   flex: 1;
   background:
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.03) 0 3px, transparent 3px 6px),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.025) 0 3px, transparent 3px 6px),
     radial-gradient(circle at 50% 0%, var(--felt-hi), var(--felt-lo) 72%);
-  border: 9px solid transparent;
+  border: 8px solid transparent;
   border-image: linear-gradient(180deg, var(--wood-hi), var(--wood-lo)) 1;
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 1rem;
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
   gap: 1.1rem;
-  min-height: 220px;
-  box-shadow: inset 0 4px 30px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+  min-height: 200px;
+  box-shadow: inset 0 4px 30px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 0, 0, 0.22);
 }
 
 .table-empty {
@@ -515,21 +593,20 @@ input:focus {
   gap: 4px;
   padding: 6px;
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.16);
-  border: 1.5px solid rgba(255, 220, 150, 0.42);
-  min-height: 64px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1.5px solid rgba(210, 155, 50, 0.5);
+  min-height: 60px;
   position: relative;
 }
 
 .meld-row.meld-valid {
-  border-color: rgba(140, 220, 170, 0.7);
+  border-color: rgba(150, 220, 170, 0.7);
 }
 
 .meld-row.meld-invalid {
-  border-color: rgba(232, 122, 99, 0.8);
+  border-color: rgba(224, 129, 99, 0.85);
 }
 
-/* Grip for picking up a whole meld to reorder it on the table. */
 .meld-grip {
   align-self: stretch;
   display: flex;
@@ -555,13 +632,13 @@ input:focus {
 }
 
 .new-meld-drop {
-  min-height: 64px;
+  min-height: 60px;
   min-width: 120px;
-  border: 2px dashed rgba(255, 230, 170, 0.45);
+  border: 2px dashed rgba(210, 155, 50, 0.5);
   border-radius: 10px;
   display: grid;
   place-items: center;
-  color: rgba(255, 240, 210, 0.7);
+  color: rgba(244, 224, 180, 0.75);
   font-size: 0.8rem;
   font-weight: 600;
   padding: 0.5rem;
@@ -569,35 +646,22 @@ input:focus {
 }
 
 .new-meld-drop.over {
-  border-color: var(--amber);
+  border-color: var(--accent);
   color: #fff4dd;
-  background: rgba(232, 162, 61, 0.16);
+  background: rgba(210, 155, 50, 0.16);
 }
 
-/* ----- Rack ----- */
+/* ----- Rack (no header label — count removed) ----- */
 .rack-area {
   background:
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 8px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0 2px, transparent 2px 8px),
     linear-gradient(180deg, var(--wood-hi), var(--wood-lo));
-  border: 1px solid rgba(0, 0, 0, 0.25);
-  border-radius: 14px;
-  padding: 0.8rem;
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  border-radius: 12px;
+  padding: 5px;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
 }
 
-.rack-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.55rem;
-  color: rgba(255, 240, 220, 0.65);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-/* Free-form rack: tile-shaped slots, gaps allowed; grows in rows. */
 .rack-grid {
   --slot-w: 46px;
   --slot-h: 62px;
@@ -608,10 +672,10 @@ input:focus {
   gap: 5px;
   max-height: 42vh;
   overflow-y: auto;
-  padding: 9px;
+  padding: 8px;
   background: var(--tray);
-  border-radius: 9px;
-  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.5), inset 0 -1px 0 rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.5), inset 0 -1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .rack-slot {
@@ -630,8 +694,8 @@ input:focus {
 }
 
 .rack-slot.over {
-  box-shadow: inset 0 0 0 2px var(--amber);
-  background: rgba(232, 162, 61, 0.14);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  background: rgba(210, 155, 50, 0.14);
 }
 
 /* ----- Tiles ----- */
@@ -648,9 +712,9 @@ input:focus {
   cursor: grab;
   user-select: none;
   box-shadow:
-    inset 0 2px 1px rgba(255, 255, 255, 0.95),
-    inset 0 -4px 6px rgba(150, 110, 60, 0.24),
-    0 3px 5px rgba(40, 25, 10, 0.32);
+    inset 0 2px 1px rgba(255, 252, 240, 0.85),
+    inset 0 -4px 6px rgba(140, 100, 50, 0.3),
+    0 3px 5px rgba(40, 25, 10, 0.34);
   touch-action: none;
 }
 
@@ -663,7 +727,7 @@ input:focus {
   transform: scale(1.05);
 }
 
-/* Suit shape pip in the top-left corner — a non-colour cue for the suit. */
+/* Suit shape pip — non-colour cue for the suit. */
 .tile-pip {
   position: absolute;
   top: 4px;
@@ -673,15 +737,13 @@ input:focus {
   pointer-events: none;
 }
 
-/* The diamond glyph fills less of its em-box and sits lower than the other
-   pips, so size it up a touch and lift it to optically match ● ▲ ■. */
+/* The diamond fills less of its em-box and sits lower; size it up + lift it so
+   it optically matches ● ▲ ■. */
 .tile-orange .tile-pip {
   font-size: 0.8rem;
   top: 1px;
 }
 
-/* The digit uses the vivid suit colour; a thin dark outline (painted behind the
-   fill) keeps lighter hues legible on the warm tile without bulking the glyph. */
 .tile-face {
   -webkit-text-stroke: 0.5px rgba(40, 25, 10, 0.24);
   paint-order: stroke fill;
@@ -697,19 +759,19 @@ input:focus {
 .tile-orange .tile-pip { color: var(--orange-pip); }
 
 .tile-joker {
-  background: linear-gradient(135deg, #fde8b0, #f3c06a 55%, #e8a23d);
+  background: linear-gradient(135deg, #fbe3a0, #e8b53d 55%, #cf8a2c);
 }
 .tile-joker .tile-face {
-  color: #6b4410;
+  color: #5a3a10;
   -webkit-text-stroke: 0;
 }
 
-/* ----- Action bar ----- */
+/* ----- Action bar — single contextual button ----- */
 .action-bar {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 0.6rem;
   flex-wrap: wrap;
 }
 
@@ -717,11 +779,72 @@ input:focus {
   margin-right: auto;
 }
 
+.open-chip {
+  margin-right: auto;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--primary);
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+}
+
+.btn-action {
+  flex: 0 1 280px;
+  height: 3rem;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  border-color: transparent;
+}
+
+.btn-action.is-draw {
+  background: var(--green);
+  color: #ede2c6;
+  box-shadow: 0 3px 10px -2px rgba(28, 71, 51, 0.5);
+}
+
+.btn-action.is-draw:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.btn-action.is-commit {
+  background: var(--primary);
+  color: var(--primary-text);
+  box-shadow: 0 3px 10px -2px rgba(158, 59, 47, 0.5);
+}
+
+.btn-action.is-commit:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
 .game-error {
   text-align: right;
 }
 
+/* ----- Mobile density: thin the chrome, give the felt the room back ----- */
 @media (max-width: 480px) {
+  .game {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  .table-area {
+    border-width: 4px;
+    padding: 0.7rem;
+    min-height: 0;
+    gap: 0.8rem;
+  }
+  .rack-area {
+    padding: 4px;
+  }
+  .rack-grid {
+    --slot-w: 44px;
+    --slot-h: 58px;
+    gap: 4px;
+    padding: 7px;
+  }
   .tile {
     width: 40px;
     height: 54px;
@@ -730,11 +853,10 @@ input:focus {
   .tile-face {
     -webkit-text-stroke-width: 0.4px;
   }
-  .rack-grid {
-    --slot-w: 44px;
-    --slot-h: 58px;
+  .btn-action {
+    flex: 1 1 auto;
   }
   .logo {
-    font-size: 2rem;
+    font-size: 2.1rem;
   }
 }
