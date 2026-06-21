@@ -21,6 +21,7 @@ export function GameView({
   const handle = useRef<BoardHandle>({ table: game.table, rack: game.hands[me] ?? [] });
   const [resetNonce, setResetNonce] = useState(0);
   const [sortNonce, setSortNonce] = useState(0);
+  const [sortMode, setSortMode] = useState<"color" | "number">("color");
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +68,6 @@ export function GameView({
   const myTurn = activeId === me && game.status === "playing";
   const players = Object.values(game.players).sort((a, b) => a.seat - b.seat);
   const myRack = game.hands[me] ?? [];
-  const opened = game.hasOpened[me];
 
   // When spectating, mirror the active player's live draft (if it's for the
   // current turn) instead of the committed table.
@@ -189,12 +189,25 @@ export function GameView({
                     className="menu-item"
                     role="menuitem"
                     onClick={() => {
+                      setSortMode("color");
                       setSortNonce((k) => k + 1);
                       setMenuOpen(false);
                     }}
                   >
                     <span className="menu-ico" aria-hidden="true">⇅</span>
-                    Sort tray
+                    Sort by colour
+                  </button>
+                  <button
+                    className="menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setSortMode("number");
+                      setSortNonce((k) => k + 1);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <span className="menu-ico" aria-hidden="true">⇅</span>
+                    Sort by number
                   </button>
                   <button
                     className="menu-item"
@@ -230,6 +243,7 @@ export function GameView({
         storageKey={`rummle:rack:${game.id}:${me}`}
         resetNonce={resetNonce}
         sortNonce={sortNonce}
+        sortMode={sortMode}
         onChange={(h) => {
           handle.current = h;
           if (myTurn) publishLater(h.table);
@@ -246,7 +260,6 @@ export function GameView({
           <span className="hint">Game over.</span>
         ) : myTurn ? (
           <>
-            {!opened && <span className="open-chip">Open 30+</span>}
             <button className="btn btn-action is-reset" disabled={busy || !boardDirty} onClick={onReset}>
               Reset
             </button>

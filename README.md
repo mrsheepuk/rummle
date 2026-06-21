@@ -1,10 +1,6 @@
 # Rummle
 
-A free, open-source, web-based, real-time **multiplayer Rummikub-like** tile
-game. Make your runs and groups, lay down your opening 30, empty your rack, win.
-
-> **Name:** "Rummle" is a working title (defined once in `src/constants.ts`) so
-> we can rename to a final, trademark-safe brand with a one-line change.
+A free, open-source, web-based, real-time **multiplayer Rummy-based tile game**. Make your runs and groups, lay down your opening 30, empty your rack, win.
 
 ## Stack
 

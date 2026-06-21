@@ -52,6 +52,13 @@ export function rackSortKey(tile: Tile): number {
   return colorRank * 100 + tile.value;
 }
 
+/** Stable sort key for displaying a rack: by value, then color; jokers last. */
+export function rackSortByNumberKey(tile: Tile): number {
+  if (tile.kind === "joker") return 9999;
+  const colorRank = COLORS.indexOf(tile.color);
+  return tile.value * 10 + colorRank;
+}
+
 export function isJoker(tile: Tile): boolean {
   return tile.kind === "joker";
 }

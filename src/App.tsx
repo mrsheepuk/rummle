@@ -15,9 +15,11 @@ export function App() {
   // request.auth), which is what broke arriving via a share link.
   const { game, loading: gameLoading, error: gameError } = useGame(user ? gameId : null);
 
-  if (authLoading) return <Splash message="Signing you in…" />;
+  // Auth is anonymous, so there's nothing for the player to do while it settles
+  // — show a bare spinner rather than misleading "signing in" / "not signed in"
+  // copy. Only a genuine failure gets a message.
   if (authError) return <Splash message={`Sign-in problem: ${authError}`} />;
-  if (!user) return <Splash message="Not signed in." />;
+  if (authLoading || !user) return <Splash spinner />;
 
   if (!gameId) {
     return <Home onEnterGame={goToGame} />;
@@ -55,11 +57,20 @@ export function App() {
   return <GameView game={game} me={user.uid} onLeave={goHome} />;
 }
 
-function Splash({ message, children }: { message: string; children?: React.ReactNode }) {
+function Splash({
+  message,
+  spinner,
+  children,
+}: {
+  message?: string;
+  spinner?: boolean;
+  children?: React.ReactNode;
+}) {
   return (
     <div className="splash">
       <h1 className="logo">{APP_NAME}</h1>
-      <p>{message}</p>
+      {spinner && <div className="spinner" role="status" aria-label="Loading" />}
+      {message && <p>{message}</p>}
       {children}
     </div>
   );

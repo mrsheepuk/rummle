@@ -9,8 +9,6 @@ aren't obvious from the code.
 - Stack: **React 18 + TypeScript + Vite**, **@dnd-kit** for drag & drop,
   **Firebase** (Anonymous Auth + Firestore) for realtime sync, **Vitest** tests.
 - Real-time, 2–4 players, anonymous join via a 4-letter share code.
-- "Rummle" is a **working title** — defined once in `src/constants.ts`. Rename
-  there only; it's not a trademark-safe final name yet.
 
 ## Architecture (important)
 
