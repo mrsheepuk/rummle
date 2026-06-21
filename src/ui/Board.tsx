@@ -67,9 +67,27 @@ function slotCountFor(handSize: number, cols = 0): number {
   return cols > 0 ? Math.ceil(base / cols) * cols : base;
 }
 
-function firstEmpty(slots: Slots, except = -1): number {
-  for (let i = 0; i < slots.length; i++) if (slots[i] === null && i !== except) return i;
-  return -1;
+/**
+ * Insert `id` at slot `t`, shifting the run of tiles starting at `t` toward the
+ * nearest gap so an occupied target makes room rather than swapping. Shifts
+ * right into the first empty slot at/after `t` (a deliberate gap further right
+ * stops the shift); if the rack is packed solid from `t` onward, falls back to
+ * shifting left into the nearest gap before `t`. Mutates `slots`; returns false
+ * (no change) only when there is no empty slot anywhere to absorb the insert.
+ */
+function insertAt(slots: Slots, t: number, id: string): boolean {
+  let gap = -1;
+  for (let i = t; i < slots.length; i++) if (slots[i] === null) { gap = i; break; }
+  if (gap >= 0) {
+    for (let i = gap; i > t; i--) slots[i] = slots[i - 1]!;
+    slots[t] = id;
+    return true;
+  }
+  for (let i = t; i >= 0; i--) if (slots[i] === null) { gap = i; break; }
+  if (gap < 0) return false;
+  for (let i = gap; i < t; i++) slots[i] = slots[i + 1]!;
+  slots[t] = id;
+  return true;
 }
 
 /**
@@ -368,18 +386,10 @@ export function Board({
 
     if (target.kind === "slot") {
       const t = target.index;
-      const occupant = slots[t];
-      if (occupant === activeId) return; // dropped onto itself
-      newSlots[t] = activeId;
-      if (occupant) {
-        if (src.kind === "slot") {
-          newSlots[src.index] = occupant; // swap
-        } else {
-          const empty = firstEmpty(newSlots, t); // bump occupant out of the way
-          if (empty < 0) return; // no room — cancel
-          newSlots[empty] = occupant;
-        }
-      }
+      if (slots[t] === activeId) return; // dropped onto itself
+      // Insert (shifting tiles aside) rather than swap; an empty target just
+      // places the tile, since the shift starts at the gap.
+      if (!insertAt(newSlots, t, activeId)) return; // no room — cancel
       setSlots(newSlots);
       if (src.kind === "meld") commitMelds(newMelds);
       playClack(0.1); // faintest tick for arranging the rack
