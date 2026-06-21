@@ -20,22 +20,28 @@ export function GameView({
   const index = useMemo(() => buildIndex(game), [game.seed]);
   const handle = useRef<BoardHandle>({ table: game.table, rack: game.hands[me] ?? [] });
   const [resetNonce, setResetNonce] = useState(0);
+  const [sortNonce, setSortNonce] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [muted, setMutedState] = useState(isMuted());
   const [draft, setDraft] = useState<Draft | null>(null);
   // Whether the player has played at least one tile from their hand this turn
-  // (drives which action buttons are enabled).
+  // (drives which single action button shows).
   const [hasPlayed, setHasPlayed] = useState(false);
+  // Whether the working table diverges from this turn's committed table at all
+  // (staged tiles, taken-down tiles, or rearranged melds) — drives Reset.
+  const [boardDirty, setBoardDirty] = useState(false);
 
-  // Reset at every turn boundary. `hasPlayed` is otherwise only recomputed when
-  // the Board reports a layout change; if the board happens to be byte-identical
+  // Reset at every turn boundary. These are otherwise only recomputed when the
+  // Board reports a layout change; if the board happens to be byte-identical
   // across a turn change (e.g. an opponent's committed table matches the draft
   // we were spectating) that report never fires and a stale `true` would leave
   // "Draw & pass" wrongly disabled until a reload. Resetting here is always safe
   // — nothing is played at the start of a turn.
   useEffect(() => {
     setHasPlayed(false);
+    setBoardDirty(false);
   }, [game.currentTurn]);
 
   // Watch the active player's in-progress turn (quasi-real-time).
@@ -138,6 +144,12 @@ export function GameView({
     setResetNonce((k) => k + 1);
   }
 
+  function toggleMute() {
+    const next = !muted;
+    setMuted(next);
+    setMutedState(next);
+  }
+
   const winner = game.winnerId ? game.players[game.winnerId]?.name : null;
 
   return (
@@ -158,22 +170,51 @@ export function GameView({
           })}
         </div>
         <div className="game-meta">
-          <span className="pool-count">Pool: {game.pool.length}</span>
-          <button
-            className="btn btn-link"
-            title={muted ? "Unmute sounds" : "Mute sounds"}
-            aria-label={muted ? "Unmute sounds" : "Mute sounds"}
-            onClick={() => {
-              const next = !muted;
-              setMuted(next);
-              setMutedState(next);
-            }}
-          >
-            {muted ? "🔇" : "🔊"}
-          </button>
-          <button className="btn btn-link" onClick={onLeave}>
-            Leave
-          </button>
+          <span className="pool-count">Pool {game.pool.length}</span>
+          <div className="menu">
+            <button
+              className={`btn btn-icon menu-button${menuOpen ? " is-active" : ""}`}
+              aria-label="Game menu"
+              aria-haspopup="true"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              ☰
+            </button>
+            {menuOpen && (
+              <>
+                <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
+                <div className="menu-dropdown" role="menu">
+                  <button
+                    className="menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setSortNonce((k) => k + 1);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <span className="menu-ico" aria-hidden="true">⇅</span>
+                    Sort tray
+                  </button>
+                  <button
+                    className="menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      toggleMute();
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <span className="menu-ico" aria-hidden="true">{muted ? "🔇" : "🔊"}</span>
+                    {muted ? "Unmute sounds" : "Mute sounds"}
+                  </button>
+                  <button className="menu-item danger" role="menuitem" onClick={onLeave}>
+                    <span className="menu-ico" aria-hidden="true">⎋</span>
+                    Leave game
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -188,11 +229,13 @@ export function GameView({
         myTurn={myTurn}
         storageKey={`rummle:rack:${game.id}:${me}`}
         resetNonce={resetNonce}
+        sortNonce={sortNonce}
         onChange={(h) => {
           handle.current = h;
           if (myTurn) publishLater(h.table);
           const rackSet = new Set(h.rack);
           setHasPlayed((game.hands[me] ?? []).some((id) => !rackSet.has(id)));
+          setBoardDirty(JSON.stringify(h.table) !== JSON.stringify(game.table));
         }}
       />
 
@@ -203,26 +246,19 @@ export function GameView({
           <span className="hint">Game over.</span>
         ) : myTurn ? (
           <>
-            {!opened && <span className="hint">Opening play must total 30+ points.</span>}
-            <button className="btn" disabled={busy} onClick={onReset}>
+            {!opened && <span className="open-chip">Open 30+</span>}
+            <button className="btn btn-action is-reset" disabled={busy || !boardDirty} onClick={onReset}>
               Reset
             </button>
-            <button
-              className="btn"
-              disabled={busy || hasPlayed}
-              title={hasPlayed ? "Reset first if you'd rather draw" : undefined}
-              onClick={onDraw}
-            >
-              Draw &amp; pass
-            </button>
-            <button
-              className="btn btn-primary"
-              disabled={busy || !hasPlayed}
-              title={hasPlayed ? undefined : "Play a tile from your rack to commit"}
-              onClick={onCommit}
-            >
-              Commit play
-            </button>
+            {hasPlayed ? (
+              <button className="btn btn-action is-commit" disabled={busy} onClick={onCommit}>
+                Commit play
+              </button>
+            ) : (
+              <button className="btn btn-action is-draw" disabled={busy} onClick={onDraw}>
+                Draw &amp; pass
+              </button>
+            )}
           </>
         ) : (
           <span className="hint">

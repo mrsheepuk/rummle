@@ -1,31 +1,72 @@
+/* ============================================================
+   Rummle — "Knack" theme (vintage tabletop)
+   Racing-green felt, rosewood, aged ivory, mustard + oxblood.
+   Light by default; dark applied automatically via prefers-color-scheme.
+   Wordmark: Yeseva One. All other UI + tile numerals: Work Sans.
+   Drop-in replacement for src/index.css — class names unchanged,
+   plus a few new ones used by the updated GameView (menu, action button).
+   ============================================================ */
+
 :root {
-  --bg: #0f172a;
-  --bg-soft: #1e293b;
-  --bg-card: #1e293b;
-  --line: #334155;
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --primary: #22c55e;
-  --primary-dark: #16a34a;
-  --danger: #ef4444;
-  --felt: #14532d;
+  /* surfaces */
+  --bg: #e9ddc0;          /* page (aged paper) */
+  --bg-card: #efe4c8;     /* cards / rails */
+  --bg-soft: #e6d7b6;     /* secondary buttons, chips */
+  --bg-input: #f7f0dc;    /* inputs, code boxes, menu */
+  --line: rgba(58, 44, 22, 0.14);
+  --text: #2f291f;
+  --muted: #948b73;
 
-  --tile-bg: #faf7ee;
-  /* The digit and the corner pip share one vivid colour per suit so the number
-     matches the icon. Legibility on the light tile comes from a dark outline on
-     the digit (see .tile-face) rather than from darkening the hue. Suits also
-     differ in lightness, and each has a distinct shape pip — so they stay
-     distinguishable without relying on hue (colour-blind safe). */
-  --red-ink: #f03e3e;
-  --red-pip: #f03e3e;
-  --blue-ink: #1c7ed6;
-  --blue-pip: #1c7ed6;
-  --black-ink: #2a3036;
-  --black-pip: #343a40;
-  --orange-ink: #f76707;
-  --orange-pip: #f76707;
+  /* brand */
+  --primary: #9e3b2f;          /* oxblood — primary action (Commit) */
+  --primary-dark: #883227;
+  --primary-text: #f1e7cb;
+  --green: #1c4733;            /* racing green — wordmark, codes, draw, active turn */
+  --accent: #d29b32;           /* mustard — avatars, dot, highlights */
+  --danger: #b23a2a;
 
-  color-scheme: dark;
+  /* materials (shared light + dark) */
+  --felt-hi: #2b5e40;
+  --felt-lo: #173a26;
+  --wood-hi: #9c4d3a;          /* rosewood */
+  --wood-lo: #5f2d22;
+  --tray: rgba(0, 0, 0, 0.26);
+
+  --tile-bg-1: #efe3c2;        /* aged ivory */
+  --tile-bg-2: #e6d7b0;
+  --tile-bg-3: #d9c699;
+
+  /* suit inks — paired with distinct SHAPE pips in TileView (colour-blind safe) */
+  --blue-ink:  #1f7fb8;  --blue-pip:  #1f7fb8;
+  --red-ink:   #d8503c;  --red-pip:   #d8503c;
+  --orange-ink:#e8852b;  --orange-pip:#e8852b;
+  --black-ink: #3a352d;  --black-pip: #3a352d;
+
+  --page-hi: #f0e6cb;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1d1810;
+    --bg-card: #251e13;
+    --bg-soft: #2e2517;
+    --bg-input: #2c2417;
+    --line: rgba(255, 255, 255, 0.10);
+    --text: #e3d4ad;
+    --muted: #a2967a;
+
+    --primary: #b8483a;        /* brightened oxblood so it reads on espresso */
+    --primary-dark: #a23d31;
+    --primary-text: #f5ecd4;
+    --green: #2f7a52;          /* lifted green for buttons/active on dark */
+    --accent: #d9a73f;
+    --danger: #e08163;
+
+    --tray: rgba(0, 0, 0, 0.32);
+    --page-hi: #251e13;
+    color-scheme: dark;
+  }
 }
 
 * {
@@ -40,8 +81,8 @@ body,
 }
 
 body {
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  background: radial-gradient(circle at 50% -10%, #1e293b, var(--bg) 60%);
+  font-family: "Work Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: radial-gradient(circle at 50% -10%, var(--page-hi), var(--bg) 60%);
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
 }
@@ -51,20 +92,38 @@ body {
   flex-direction: column;
 }
 
+/* Wordmark — vintage serif, racing green, with a mustard dot. */
 .logo {
-  font-size: 2.6rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-family: "Yeseva One", Georgia, serif;
+  font-weight: 400;
+  font-size: 2.7rem;
+  letter-spacing: 0;
   margin: 0;
-  background: linear-gradient(120deg, #4ade80, #22d3ee);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--green);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .logo {
+    color: var(--text);
+  }
+}
+
+.logo::before {
+  content: "";
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.45);
 }
 
 .tagline {
   color: var(--muted);
-  margin-top: 0.25rem;
+  margin-top: 0.4rem;
+  font-weight: 500;
 }
 
 /* ----- Layout helpers ----- */
@@ -84,37 +143,55 @@ body {
 .card {
   background: var(--bg-card);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 1.5rem;
   width: 100%;
   max-width: 380px;
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 1px 2px rgba(40, 30, 15, 0.06), 0 24px 48px -28px rgba(40, 30, 15, 0.5);
+}
+
+.card h2 {
+  font-family: "Yeseva One", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: 0;
+  margin: 0 0 0.2rem;
+  color: var(--text);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.4rem;
   text-align: left;
-  font-size: 0.85rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
 input {
-  background: var(--bg);
+  background: var(--bg-input);
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 0.7rem 0.8rem;
+  padding: 0.72rem 0.85rem;
   color: var(--text);
+  font-family: inherit;
   font-size: 1rem;
   width: 100%;
 }
 
+input::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
 input:focus {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
   border-color: transparent;
 }
 
@@ -122,8 +199,9 @@ input:focus {
   text-transform: uppercase;
   letter-spacing: 0.4em;
   text-align: center;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 1.4rem;
+  color: var(--green);
 }
 
 .join-row {
@@ -139,6 +217,7 @@ input:focus {
   text-align: center;
   color: var(--muted);
   font-size: 0.8rem;
+  font-weight: 500;
   position: relative;
 }
 
@@ -146,18 +225,19 @@ input:focus {
 .btn {
   appearance: none;
   border: 1px solid var(--line);
-  background: var(--bg-soft);
+  background: var(--bg-input);
   color: var(--text);
   border-radius: 10px;
-  padding: 0.7rem 1rem;
+  padding: 0.72rem 1rem;
+  font-family: inherit;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.05s ease, background 0.15s ease, opacity 0.15s ease;
+  transition: transform 0.05s ease, background 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btn:hover {
-  background: #273449;
+  background: var(--bg-soft);
 }
 
 .btn:active {
@@ -171,8 +251,9 @@ input:focus {
 
 .btn-primary {
   background: var(--primary);
-  border-color: var(--primary-dark);
-  color: #06210f;
+  border-color: transparent;
+  color: var(--primary-text);
+  box-shadow: 0 3px 10px -2px rgba(158, 59, 47, 0.5);
 }
 
 .btn-primary:hover {
@@ -180,7 +261,7 @@ input:focus {
 }
 
 .btn-small {
-  padding: 0.35rem 0.6rem;
+  padding: 0.38rem 0.65rem;
   font-size: 0.8rem;
 }
 
@@ -189,18 +270,39 @@ input:focus {
   border: none;
   color: var(--muted);
   text-decoration: underline;
+  text-underline-offset: 2px;
   padding: 0.4rem;
+  font-weight: 600;
+}
+
+/* Square icon button (the game-bar menu trigger). */
+.btn-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.btn-icon.is-active {
+  background: var(--green);
+  border-color: transparent;
+  color: #ede2c6;
 }
 
 .error {
   color: var(--danger);
   font-size: 0.9rem;
+  font-weight: 600;
   margin: 0;
 }
 
 .hint {
   color: var(--muted);
   font-size: 0.9rem;
+  font-weight: 500;
   margin: 0;
 }
 
@@ -209,14 +311,17 @@ input:focus {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  background: var(--bg);
+  background: var(--bg-input);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 0.6rem 0.8rem;
 }
 
 .code-label {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--muted);
 }
 
@@ -224,6 +329,7 @@ input:focus {
   font-size: 1.4rem;
   font-weight: 800;
   letter-spacing: 0.3em;
+  color: var(--green);
   flex: 1;
 }
 
@@ -240,27 +346,39 @@ input:focus {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  background: var(--bg);
+  background: var(--bg-input);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 0.5rem 0.7rem;
+  border-radius: 12px;
+  padding: 0.55rem 0.7rem;
   text-align: left;
 }
 
+.player-list li.me {
+  border-color: var(--green);
+  box-shadow: inset 0 0 0 1px var(--green);
+}
+
 .player-list .empty-slot {
-  opacity: 0.45;
+  opacity: 0.5;
   border-style: dashed;
+  background: transparent;
 }
 
 .player-list .seat {
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 1.7rem;
+  height: 1.7rem;
   display: grid;
   place-items: center;
-  background: var(--bg-soft);
+  background: var(--accent);
+  color: #3a2708;
   border-radius: 50%;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 0.85rem;
+}
+
+.player-list .empty-slot .seat {
+  background: var(--bg-soft);
+  color: var(--muted);
 }
 
 .player-list .name {
@@ -269,8 +387,11 @@ input:focus {
 }
 
 .badge {
-  font-size: 0.7rem;
-  padding: 0.15rem 0.5rem;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.18rem 0.5rem;
   border-radius: 999px;
   background: var(--bg-soft);
   border: 1px solid var(--line);
@@ -278,9 +399,9 @@ input:focus {
 }
 
 .badge-you {
-  background: var(--primary);
-  color: #06210f;
-  border-color: var(--primary-dark);
+  background: var(--green);
+  color: #ede2c6;
+  border-color: transparent;
 }
 
 /* ----- Game ----- */
@@ -312,21 +433,28 @@ input:focus {
 .turn-chip {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   background: var(--bg-card);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 0.3rem 0.7rem;
+  padding: 0.32rem 0.7rem 0.32rem 0.4rem;
   font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .turn-chip.active {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+  background: var(--green);
+  border-color: transparent;
+  color: #ede2c6;
+}
+
+.turn-chip.active .chip-count {
+  background: rgba(0, 0, 0, 0.22);
+  color: #ede2c6;
 }
 
 .turn-chip.me .chip-name {
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .chip-count {
@@ -334,43 +462,128 @@ input:focus {
   border-radius: 999px;
   padding: 0 0.45rem;
   font-size: 0.75rem;
+  font-weight: 700;
   color: var(--muted);
 }
 
 .game-meta {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
   font-size: 0.85rem;
+  font-weight: 600;
   color: var(--muted);
 }
 
-.winner-banner {
-  background: linear-gradient(120deg, var(--primary), #22d3ee);
-  color: #06210f;
-  font-weight: 800;
+.pool-count {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.32rem 0.7rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ----- Overflow menu (Sort tray / Reset / Mute / Leave) ----- */
+.menu {
+  position: relative;
+}
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  width: 190px;
+  background: var(--bg-input);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  z-index: 30;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.72rem 0.85rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-item:hover:not(:disabled) {
+  background: var(--bg-soft);
+}
+
+.menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.menu-item .menu-ico {
+  width: 1.1rem;
   text-align: center;
-  padding: 0.7rem;
-  border-radius: 12px;
+  color: var(--primary);
+  flex: none;
+}
+
+.menu-item.danger {
+  color: var(--primary);
+}
+
+.menu-item.danger .menu-ico {
+  color: var(--primary);
+}
+
+.winner-banner {
+  background: linear-gradient(120deg, var(--green), var(--accent));
+  color: #1a1208;
+  font-family: "Yeseva One", Georgia, serif;
+  font-weight: 400;
+  text-align: center;
+  padding: 0.8rem;
+  border-radius: 14px;
 }
 
 /* ----- Table & melds ----- */
 .table-area {
   flex: 1;
-  background: radial-gradient(circle at 50% 0%, #166534, var(--felt) 70%);
-  border: 1px solid #14532d;
-  border-radius: 16px;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.025) 0 3px, transparent 3px 6px),
+    radial-gradient(circle at 50% 0%, var(--felt-hi), var(--felt-lo) 72%);
+  border: 8px solid transparent;
+  border-image: linear-gradient(180deg, var(--wood-hi), var(--wood-lo)) 1;
+  border-radius: 12px;
   padding: 1rem;
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
   gap: 1.1rem;
-  min-height: 220px;
-  box-shadow: inset 0 4px 30px rgba(0, 0, 0, 0.35);
+  min-height: 200px;
+  box-shadow: inset 0 4px 30px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 0, 0, 0.22);
 }
 
 .table-empty {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
   margin: auto;
 }
 
@@ -381,20 +594,19 @@ input:focus {
   padding: 6px;
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.18);
-  border: 2px solid transparent;
-  min-height: 64px;
+  border: 1.5px solid rgba(210, 155, 50, 0.5);
+  min-height: 60px;
   position: relative;
 }
 
 .meld-row.meld-valid {
-  border-color: rgba(34, 197, 94, 0.6);
+  border-color: rgba(150, 220, 170, 0.7);
 }
 
 .meld-row.meld-invalid {
-  border-color: rgba(239, 68, 68, 0.7);
+  border-color: rgba(224, 129, 99, 0.85);
 }
 
-/* Grip for picking up a whole meld to reorder it on the table. */
 .meld-grip {
   align-self: stretch;
   display: flex;
@@ -402,7 +614,7 @@ input:focus {
   justify-content: center;
   padding: 0 3px;
   margin: -2px 1px -2px -2px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.45);
   font-size: 0.85rem;
   letter-spacing: -2px;
   cursor: grab;
@@ -416,49 +628,40 @@ input:focus {
 
 .meld-drag-preview {
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.55);
-  background: rgba(20, 40, 28, 0.95);
+  background: rgba(20, 50, 35, 0.95);
 }
 
 .new-meld-drop {
-  min-height: 64px;
+  min-height: 60px;
   min-width: 120px;
-  border: 2px dashed rgba(255, 255, 255, 0.3);
+  border: 2px dashed rgba(210, 155, 50, 0.5);
   border-radius: 10px;
   display: grid;
   place-items: center;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(244, 224, 180, 0.75);
   font-size: 0.8rem;
+  font-weight: 600;
   padding: 0.5rem;
   flex: 1;
 }
 
 .new-meld-drop.over {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: rgba(34, 197, 94, 0.1);
+  border-color: var(--accent);
+  color: #fff4dd;
+  background: rgba(210, 155, 50, 0.16);
 }
 
-/* ----- Rack ----- */
+/* ----- Rack (no header label — count removed) ----- */
 .rack-area {
-  background: var(--bg-card);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 0.75rem;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0 2px, transparent 2px 8px),
+    linear-gradient(180deg, var(--wood-hi), var(--wood-lo));
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  border-radius: 12px;
+  padding: 5px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
 }
 
-.rack-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-/* Free-form rack: tile-shaped slots where tiles can sit anywhere (gaps allowed)
-   so players group their hand however they like. Columns auto-fill to the
-   available width, so it never scrolls sideways — it grows in rows and scrolls
-   vertically if a hand gets large. */
 .rack-grid {
   --slot-w: 46px;
   --slot-h: 62px;
@@ -469,15 +672,10 @@ input:focus {
   gap: 5px;
   max-height: 42vh;
   overflow-y: auto;
-  padding: 6px 4px;
-  background: repeating-linear-gradient(
-    90deg,
-    #2b3648,
-    #2b3648 2px,
-    #26303f 2px,
-    #26303f 6px
-  );
-  border-radius: 10px;
+  padding: 8px;
+  background: var(--tray);
+  border-radius: 8px;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.5), inset 0 -1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .rack-slot {
@@ -486,7 +684,7 @@ input:focus {
   border-radius: 8px;
   display: grid;
   place-items: center;
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.16);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
@@ -496,8 +694,8 @@ input:focus {
 }
 
 .rack-slot.over {
-  box-shadow: inset 0 0 0 2px var(--primary);
-  background: rgba(34, 197, 94, 0.12);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  background: rgba(210, 155, 50, 0.14);
 }
 
 /* ----- Tiles ----- */
@@ -505,15 +703,18 @@ input:focus {
   position: relative;
   width: 44px;
   height: 58px;
-  background: var(--tile-bg);
+  background: linear-gradient(158deg, var(--tile-bg-1) 0%, var(--tile-bg-2) 60%, var(--tile-bg-3) 100%);
   border-radius: 8px;
   display: grid;
   place-items: center;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 1.5rem;
   cursor: grab;
   user-select: none;
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3), inset 0 -3px 6px rgba(0, 0, 0, 0.12);
+  box-shadow:
+    inset 0 2px 1px rgba(255, 252, 240, 0.85),
+    inset 0 -4px 6px rgba(140, 100, 50, 0.3),
+    0 3px 5px rgba(40, 25, 10, 0.34);
   touch-action: none;
 }
 
@@ -526,61 +727,51 @@ input:focus {
   transform: scale(1.05);
 }
 
-/* Suit shape pip in the top-left corner — a non-colour cue for the suit. */
+/* Suit shape pip — non-colour cue for the suit. */
 .tile-pip {
   position: absolute;
-  top: 3px;
+  top: 4px;
   left: 5px;
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   line-height: 1;
   pointer-events: none;
 }
 
-/* The digit uses the vivid suit colour; a thin dark outline (painted behind the
-   fill so it doesn't thin the glyph) keeps even the lighter hues legible on the
-   light tile. */
+/* The diamond fills less of its em-box and sits lower; size it up + lift it so
+   it optically matches ● ▲ ■. */
+.tile-orange .tile-pip {
+  font-size: 0.8rem;
+  top: 1px;
+}
+
 .tile-face {
-  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.42);
+  -webkit-text-stroke: 0.5px rgba(40, 25, 10, 0.24);
   paint-order: stroke fill;
 }
 
-.tile-red .tile-face {
-  color: var(--red-ink);
-}
-.tile-red .tile-pip {
-  color: var(--red-pip);
-}
-.tile-blue .tile-face {
-  color: var(--blue-ink);
-}
-.tile-blue .tile-pip {
-  color: var(--blue-pip);
-}
-.tile-black .tile-face {
-  color: var(--black-ink);
-}
-.tile-black .tile-pip {
-  color: var(--black-pip);
-}
-.tile-orange .tile-face {
-  color: var(--orange-ink);
-}
-.tile-orange .tile-pip {
-  color: var(--orange-pip);
-}
+.tile-red .tile-face { color: var(--red-ink); }
+.tile-red .tile-pip { color: var(--red-pip); }
+.tile-blue .tile-face { color: var(--blue-ink); }
+.tile-blue .tile-pip { color: var(--blue-pip); }
+.tile-black .tile-face { color: var(--black-ink); }
+.tile-black .tile-pip { color: var(--black-pip); }
+.tile-orange .tile-face { color: var(--orange-ink); }
+.tile-orange .tile-pip { color: var(--orange-pip); }
+
 .tile-joker {
-  background: linear-gradient(135deg, #fde68a, #fca5a5, #93c5fd);
+  background: linear-gradient(135deg, #fbe3a0, #e8b53d 55%, #cf8a2c);
 }
 .tile-joker .tile-face {
-  color: #1f2937;
+  color: #5a3a10;
+  -webkit-text-stroke: 0;
 }
 
-/* ----- Action bar ----- */
+/* ----- Action bar — single contextual button ----- */
 .action-bar {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 0.6rem;
   flex-wrap: wrap;
 }
 
@@ -588,25 +779,97 @@ input:focus {
   margin-right: auto;
 }
 
+.open-chip {
+  margin-right: auto;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--primary);
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+}
+
+.btn-action {
+  flex: 0 1 280px;
+  height: 3rem;
+  border-radius: 12px;
+  font-size: 1.05rem;
+  border-color: transparent;
+}
+
+.btn-action.is-draw {
+  background: var(--green);
+  color: #ede2c6;
+  box-shadow: 0 3px 10px -2px rgba(28, 71, 51, 0.5);
+}
+
+.btn-action.is-draw:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.btn-action.is-commit {
+  background: var(--primary);
+  color: var(--primary-text);
+  box-shadow: 0 3px 10px -2px rgba(158, 59, 47, 0.5);
+}
+
+.btn-action.is-commit:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.btn-action.is-reset {
+  flex: 0 0 auto;
+  padding: 0 1.1rem;
+  background: var(--bg-input);
+  color: var(--text);
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.btn-action.is-reset:hover:not(:disabled) {
+  background: var(--bg-soft);
+}
+
 .game-error {
   text-align: right;
 }
 
+/* ----- Mobile density: thin the chrome, give the felt the room back ----- */
 @media (max-width: 480px) {
+  .game {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  .table-area {
+    border-width: 4px;
+    padding: 0.7rem;
+    min-height: 0;
+    gap: 0.8rem;
+  }
+  .rack-area {
+    padding: 4px;
+  }
+  .rack-grid {
+    --slot-w: 44px;
+    --slot-h: 58px;
+    gap: 4px;
+    padding: 7px;
+  }
   .tile {
     width: 40px;
     height: 54px;
     font-size: 1.45rem;
   }
-  /* Thinner outline on small screens so the bolder digits don't look crowded. */
   .tile-face {
-    -webkit-text-stroke-width: 0.6px;
+    -webkit-text-stroke-width: 0.4px;
   }
-  .rack-grid {
-    --slot-w: 44px;
-    --slot-h: 58px;
+  .btn-action {
+    flex: 1 1 auto;
   }
   .logo {
-    font-size: 2rem;
+    font-size: 2.1rem;
   }
 }

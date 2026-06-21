@@ -151,6 +151,7 @@ export function Board({
   myTurn,
   storageKey,
   resetNonce,
+  sortNonce,
   onChange,
 }: {
   committedTable: MeldIds[];
@@ -159,6 +160,7 @@ export function Board({
   myTurn: boolean;
   storageKey: string;
   resetNonce: number;
+  sortNonce: number;
   onChange: (handle: BoardHandle) => void;
 }) {
   const committedKey = useMemo(() => JSON.stringify(committedTable), [committedTable]);
@@ -347,6 +349,15 @@ export function Board({
     playClack(0.22);
   }
 
+  // Sort the rack when triggered from the header menu (sortNonce bumps).
+  const prevSort = useRef(sortNonce);
+  useEffect(() => {
+    if (prevSort.current === sortNonce) return;
+    prevSort.current = sortNonce;
+    sortRack();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortNonce]);
+
   function sortRack() {
     setSlots((prev) => {
       const ids = prev.filter((s): s is string => s !== null);
@@ -368,7 +379,6 @@ export function Board({
   const activeTile = activeId ? index.get(activeId) : null;
   const activeMeld = activeId && activeId in melds ? melds[activeId] ?? null : null;
   const meldKeys = syncOrder(meldOrder, melds).filter((k) => (melds[k] ?? []).length > 0);
-  const rackCount = slots.reduce((n, s) => n + (s ? 1 : 0), 0);
 
   return (
     <DndContext
@@ -388,12 +398,6 @@ export function Board({
       </div>
 
       <div className="rack-area">
-        <div className="rack-header">
-          <span>Your tiles ({rackCount})</span>
-          <button className="btn btn-small" onClick={sortRack} type="button">
-            Sort
-          </button>
-        </div>
         <div className="rack-grid">
           {slots.map((tileId, i) => (
             <Slot key={i} index={i} tile={tileId ? index.get(tileId) : undefined} />
