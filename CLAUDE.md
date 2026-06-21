@@ -68,9 +68,8 @@ a Firestore transaction → `onSnapshot` pushes new state back to all clients.
   change (throttled, table-only, deduped); others mirror it read-only when it's
   not their turn. Purely advisory — the authoritative move is still
   `commitTurn`. Stamped with `turn` so stale drafts are ignored once play moves
-  on; cleared on commit/draw. Needs the `draft` Firestore rule (member-only
-  write) — **redeploy `firestore.rules` to prod** for it to work live.
-  Spectators FLIP-animate the table as snapshots arrive (`useTileFlip.ts`,
+  on; cleared on commit/draw. Backed by the `draft` Firestore rule (member-only
+  write). Spectators FLIP-animate the table as snapshots arrive (`useTileFlip.ts`,
   keyed by tile `data-tile-id`, gated to `!myTurn` + `prefers-reduced-motion`);
   it tweens between published keyframes, not the opponent's live cursor. Exit
   animations for tiles pulled back to the rack are a known follow-up.
