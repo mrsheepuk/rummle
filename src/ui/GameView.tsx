@@ -29,15 +29,19 @@ export function GameView({
   // Whether the player has played at least one tile from their hand this turn
   // (drives which single action button shows).
   const [hasPlayed, setHasPlayed] = useState(false);
+  // Whether the working table diverges from this turn's committed table at all
+  // (staged tiles, taken-down tiles, or rearranged melds) — drives Reset.
+  const [boardDirty, setBoardDirty] = useState(false);
 
-  // Reset at every turn boundary. `hasPlayed` is otherwise only recomputed when
-  // the Board reports a layout change; if the board happens to be byte-identical
+  // Reset at every turn boundary. These are otherwise only recomputed when the
+  // Board reports a layout change; if the board happens to be byte-identical
   // across a turn change (e.g. an opponent's committed table matches the draft
   // we were spectating) that report never fires and a stale `true` would leave
   // "Draw & pass" wrongly disabled until a reload. Resetting here is always safe
   // — nothing is played at the start of a turn.
   useEffect(() => {
     setHasPlayed(false);
+    setBoardDirty(false);
   }, [game.currentTurn]);
 
   // Watch the active player's in-progress turn (quasi-real-time).
@@ -231,6 +235,7 @@ export function GameView({
           if (myTurn) publishLater(h.table);
           const rackSet = new Set(h.rack);
           setHasPlayed((game.hands[me] ?? []).some((id) => !rackSet.has(id)));
+          setBoardDirty(JSON.stringify(h.table) !== JSON.stringify(game.table));
         }}
       />
 
@@ -242,7 +247,7 @@ export function GameView({
         ) : myTurn ? (
           <>
             {!opened && <span className="open-chip">Open 30+</span>}
-            <button className="btn btn-action is-reset" disabled={busy || !hasPlayed} onClick={onReset}>
+            <button className="btn btn-action is-reset" disabled={busy || !boardDirty} onClick={onReset}>
               Reset
             </button>
             {hasPlayed ? (
