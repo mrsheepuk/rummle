@@ -4,3 +4,6 @@
  */
 export const APP_NAME = "Rummle";
 export const APP_TAGLINE = "Make your runs. Empty your rack. Win.";
+
+/** localStorage key for the remembered display name (shared by join screens). */
+export const NAME_KEY = "rummle:name";

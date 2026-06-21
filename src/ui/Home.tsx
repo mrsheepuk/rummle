@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { APP_NAME, APP_TAGLINE } from "../constants";
+import { APP_NAME, APP_TAGLINE, NAME_KEY } from "../constants";
 import { createNewGame, joinGame } from "../sync/gameSync";
 import { normalizeCode } from "../sync/codes";
-
-const NAME_KEY = "rummle:name";
 
 export function Home({ onEnterGame }: { onEnterGame: (id: string) => void }) {
   const [name, setName] = useState(localStorage.getItem(NAME_KEY) ?? "");
