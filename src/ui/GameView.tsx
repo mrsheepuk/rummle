@@ -68,7 +68,6 @@ export function GameView({
   const myTurn = activeId === me && game.status === "playing";
   const players = Object.values(game.players).sort((a, b) => a.seat - b.seat);
   const myRack = game.hands[me] ?? [];
-  const opened = game.hasOpened[me];
 
   // When spectating, mirror the active player's live draft (if it's for the
   // current turn) instead of the committed table.
@@ -261,7 +260,6 @@ export function GameView({
           <span className="hint">Game over.</span>
         ) : myTurn ? (
           <>
-            {!opened && <span className="open-chip">Open 30+</span>}
             <button className="btn btn-action is-reset" disabled={busy || !boardDirty} onClick={onReset}>
               Reset
             </button>
