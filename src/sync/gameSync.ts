@@ -48,16 +48,27 @@ export async function ensureSignedIn(): Promise<User> {
 
 export async function createNewGame(hostName: string): Promise<string> {
   const user = await ensureSignedIn();
-  const id = newGameCode();
-  const state = createGame({
-    id,
-    hostId: user.uid,
-    hostName,
-    seed: randomSeed(),
-    now: Date.now(),
-  });
-  await setDoc(gameRef(id), { ...toStored(state), updatedAt: serverTimestamp() });
-  return id;
+  // Codes are never reclaimed, so the namespace fills monotonically. Generate
+  // and claim inside a transaction so a collision retries with a fresh code
+  // rather than silently clobbering an existing game.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const id = newGameCode();
+    const claimed = await runTransaction(db, async (tx) => {
+      const ref = gameRef(id);
+      if ((await tx.get(ref)).exists()) return false;
+      const state = createGame({
+        id,
+        hostId: user.uid,
+        hostName,
+        seed: randomSeed(),
+        now: Date.now(),
+      });
+      tx.set(ref, { ...toStored(state), updatedAt: serverTimestamp() });
+      return true;
+    });
+    if (claimed) return id;
+  }
+  throw new Error("Could not allocate a unique game code; please try again");
 }
 
 export async function joinGame(code: string, name: string): Promise<string> {
