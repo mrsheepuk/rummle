@@ -151,6 +151,7 @@ export function Board({
   myTurn,
   storageKey,
   resetNonce,
+  sortNonce,
   onChange,
 }: {
   committedTable: MeldIds[];
@@ -159,6 +160,7 @@ export function Board({
   myTurn: boolean;
   storageKey: string;
   resetNonce: number;
+  sortNonce: number;
   onChange: (handle: BoardHandle) => void;
 }) {
   const committedKey = useMemo(() => JSON.stringify(committedTable), [committedTable]);
@@ -347,6 +349,15 @@ export function Board({
     playClack(0.22);
   }
 
+  // Sort the rack when triggered from the header menu (sortNonce bumps).
+  const prevSort = useRef(sortNonce);
+  useEffect(() => {
+    if (prevSort.current === sortNonce) return;
+    prevSort.current = sortNonce;
+    sortRack();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortNonce]);
+
   function sortRack() {
     setSlots((prev) => {
       const ids = prev.filter((s): s is string => s !== null);
@@ -390,9 +401,6 @@ export function Board({
       <div className="rack-area">
         <div className="rack-header">
           <span>Your tiles ({rackCount})</span>
-          <button className="btn btn-small" onClick={sortRack} type="button">
-            Sort
-          </button>
         </div>
         <div className="rack-grid">
           {slots.map((tileId, i) => (
