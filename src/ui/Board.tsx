@@ -20,6 +20,7 @@ import {
   SortableContext,
   arrayMove,
   horizontalListSortingStrategy,
+  rectSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable";
@@ -126,6 +127,17 @@ type Target =
   | { kind: "meld"; key: string; index: number }
   | { kind: "newmeld" };
 
+/** Keeps a meld display order in sync with the meld set: drop removed keys,
+ * append new ones (by id) so reordering survives tile edits. */
+function syncOrder(order: string[], melds: Melds): string[] {
+  const keys = Object.keys(melds).filter(isMeldKey);
+  const present = new Set(keys);
+  const kept = order.filter((k) => present.has(k));
+  const keptSet = new Set(kept);
+  const added = keys.filter((k) => !keptSet.has(k)).sort((a, b) => meldNum(a) - meldNum(b));
+  return [...kept, ...added];
+}
+
 /**
  * The play surface. The rack is a free-form grid of tile-shaped slots the
  * player can arrange however they like (gaps allowed), rearrangeable at any
@@ -155,6 +167,7 @@ export function Board({
     reconcileSlots(loadSlots(storageKey) ?? [], hand, slotCountFor(hand.length)),
   );
   const [melds, setMelds] = useState<Melds>(() => rebuildMelds(committedTable));
+  const [meldOrder, setMeldOrder] = useState<string[]>(() => committedTable.map((_, i) => `meld-${i}`));
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const nextMeldId = useRef(committedTable.length);
@@ -187,6 +200,7 @@ export function Board({
 
     if (reseedTable) {
       setMelds(workingMelds);
+      setMeldOrder(committedTable.map((_, i) => `meld-${i}`));
       nextMeldId.current = committedTable.length;
     }
     setSlots(reconcileSlots(slotsRef.current, wanted, slotCountFor(hand.length)));
@@ -199,6 +213,7 @@ export function Board({
 
   const slotsKey = slots.map((s) => s ?? "").join("|");
   const meldsKey = JSON.stringify(melds);
+  const orderKey = meldOrder.join(",");
 
   // Persist rack layout and report the committable table/rack upward.
   useEffect(() => {
@@ -207,14 +222,12 @@ export function Board({
     } catch {
       /* ignore storage failures */
     }
-    const table = Object.keys(melds)
-      .filter(isMeldKey)
-      .sort((a, b) => meldNum(a) - meldNum(b))
+    const table = syncOrder(meldOrder, melds)
       .map((k) => melds[k] ?? [])
       .filter((m) => m.length > 0);
     onChange({ table, rack: slots.filter((s): s is string => s !== null) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slotsKey, meldsKey]);
+  }, [slotsKey, meldsKey, orderKey]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -242,12 +255,37 @@ export function Board({
     return null;
   }
 
+  // Commit a meld change and keep the display order in step.
+  function commitMelds(next: Melds) {
+    const pruned = pruneEmpty(next);
+    setMelds(pruned);
+    setMeldOrder((o) => syncOrder(o, pruned));
+  }
+
   function handleDragEnd(e: DragEndEvent) {
     const activeId = String(e.active.id);
     setActiveId(null);
     if (!e.over) return;
+    const overId = String(e.over.id);
+
+    // Dragging a whole meld (by its grip) reorders melds on the table.
+    if (activeId in melds) {
+      if (!myTurn) return;
+      const overKey =
+        overId in melds ? overId : Object.keys(melds).find((k) => (melds[k] ?? []).includes(overId));
+      if (!overKey || overKey === activeId) return;
+      setMeldOrder((prev) => {
+        const order = syncOrder(prev, melds);
+        const from = order.indexOf(activeId);
+        const to = order.indexOf(overKey);
+        return from < 0 || to < 0 ? prev : arrayMove(order, from, to);
+      });
+      playClack(0.16);
+      return;
+    }
+
     const src = locate(activeId);
-    const target = classifyOver(String(e.over.id));
+    const target = classifyOver(overId);
     if (!src || !target) return;
 
     // Off-turn, only rack rearranging (slot ↔ slot) is allowed.
@@ -263,7 +301,7 @@ export function Board({
       const arr = newMelds[src.key]!;
       const oldI = arr.indexOf(activeId);
       if (oldI < 0) return;
-      setMelds(pruneEmpty({ ...newMelds, [src.key]: arrayMove(arr, oldI, target.index) }));
+      commitMelds({ ...newMelds, [src.key]: arrayMove(arr, oldI, target.index) });
       playClack(0.16);
       return;
     }
@@ -287,7 +325,7 @@ export function Board({
         }
       }
       setSlots(newSlots);
-      if (src.kind === "meld") setMelds(pruneEmpty(newMelds));
+      if (src.kind === "meld") commitMelds(newMelds);
       playClack(0.1); // faintest tick for arranging the rack
       return;
     }
@@ -295,7 +333,7 @@ export function Board({
     if (target.kind === "meld") {
       const arr = newMelds[target.key] ?? (newMelds[target.key] = []);
       arr.splice(Math.min(target.index, arr.length), 0, activeId);
-      setMelds(pruneEmpty(newMelds));
+      commitMelds(newMelds);
       if (src.kind === "slot") setSlots(newSlots);
       playClack(0.22); // tile lands on the table — just a hint
       return;
@@ -303,7 +341,7 @@ export function Board({
 
     // New meld.
     newMelds[`meld-${nextMeldId.current++}`] = [activeId];
-    setMelds(pruneEmpty(newMelds));
+    commitMelds(newMelds);
     if (src.kind === "slot") setSlots(newSlots);
     playClack(0.22);
   }
@@ -322,10 +360,8 @@ export function Board({
   }
 
   const activeTile = activeId ? index.get(activeId) : null;
-  const meldKeys = Object.keys(melds)
-    .filter(isMeldKey)
-    .sort((a, b) => meldNum(a) - meldNum(b))
-    .filter((k) => (melds[k] ?? []).length > 0);
+  const activeMeld = activeId && activeId in melds ? melds[activeId] ?? null : null;
+  const meldKeys = syncOrder(meldOrder, melds).filter((k) => (melds[k] ?? []).length > 0);
   const rackCount = slots.reduce((n, s) => n + (s ? 1 : 0), 0);
 
   return (
@@ -337,9 +373,11 @@ export function Board({
     >
       <div className="table-area">
         {meldKeys.length === 0 && <p className="table-empty">No melds on the table yet.</p>}
-        {meldKeys.map((key) => (
-          <MeldRow key={key} id={key} items={melds[key] ?? []} index={index} tilesDisabled={!myTurn} />
-        ))}
+        <SortableContext items={meldKeys} strategy={rectSortingStrategy}>
+          {meldKeys.map((key) => (
+            <MeldRow key={key} id={key} items={melds[key] ?? []} index={index} tilesDisabled={!myTurn} canReorder={myTurn} />
+          ))}
+        </SortableContext>
         {myTurn && <NewMeldDrop />}
       </div>
 
@@ -357,7 +395,18 @@ export function Board({
         </div>
       </div>
 
-      <DragOverlay>{activeTile ? <TileView tile={activeTile} dragging /> : null}</DragOverlay>
+      <DragOverlay>
+        {activeMeld ? (
+          <div className="meld-row meld meld-drag-preview">
+            {activeMeld.map((tid) => {
+              const t = index.get(tid);
+              return t ? <TileView key={tid} tile={t} /> : null;
+            })}
+          </div>
+        ) : activeTile ? (
+          <TileView tile={activeTile} dragging />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }
@@ -389,13 +438,20 @@ function MeldRow({
   items,
   index,
   tilesDisabled,
+  canReorder,
 }: {
   id: string;
   items: string[];
   index: Map<string, Tile>;
   tilesDisabled: boolean;
+  canReorder: boolean;
 }) {
-  const { setNodeRef } = useDroppable({ id });
+  // Sortable at the meld level: the grip below carries the drag listeners so a
+  // whole group can be picked up and reordered without disturbing its tiles.
+  const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: !canReorder,
+  });
   const tiles = items.map((tid) => index.get(tid)).filter(Boolean) as Tile[];
   // Validity drives the meld border colour; the point total is intentionally
   // not shown (tallying it is part of play, and it saved board space).
@@ -403,9 +459,15 @@ function MeldRow({
   const cls = ["meld-row", "meld", analysis && !analysis.valid ? "meld-invalid" : "", analysis?.valid ? "meld-valid" : ""]
     .filter(Boolean)
     .join(" ");
+  const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
   return (
-    <div ref={setNodeRef} className={cls}>
+    <div ref={setNodeRef} className={cls} style={style}>
+      {canReorder && (
+        <span className="meld-grip" {...attributes} {...listeners} aria-label="Move group" title="Drag to move this group">
+          ⠿
+        </span>
+      )}
       <SortableContext items={items} strategy={horizontalListSortingStrategy}>
         {items.map((tid) => {
           const tile = index.get(tid);

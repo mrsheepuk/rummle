@@ -364,7 +364,7 @@ input:focus {
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
-  gap: 0.6rem;
+  gap: 1.1rem;
   min-height: 220px;
   box-shadow: inset 0 4px 30px rgba(0, 0, 0, 0.35);
 }
@@ -392,6 +392,31 @@ input:focus {
 
 .meld-row.meld-invalid {
   border-color: rgba(239, 68, 68, 0.7);
+}
+
+/* Grip for picking up a whole meld to reorder it on the table. */
+.meld-grip {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  margin: -2px 1px -2px -2px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.85rem;
+  letter-spacing: -2px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.meld-grip:active {
+  cursor: grabbing;
+}
+
+.meld-drag-preview {
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.55);
+  background: rgba(20, 40, 28, 0.95);
 }
 
 .new-meld-drop {
@@ -569,13 +594,17 @@ input:focus {
 
 @media (max-width: 480px) {
   .tile {
-    width: 38px;
-    height: 50px;
-    font-size: 1.25rem;
+    width: 40px;
+    height: 54px;
+    font-size: 1.45rem;
+  }
+  /* Thinner outline on small screens so the bolder digits don't look crowded. */
+  .tile-face {
+    -webkit-text-stroke-width: 0.6px;
   }
   .rack-grid {
-    --slot-w: 40px;
-    --slot-h: 54px;
+    --slot-w: 44px;
+    --slot-h: 58px;
   }
   .logo {
     font-size: 2rem;
