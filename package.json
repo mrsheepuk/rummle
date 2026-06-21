@@ -1,0 +1,36 @@
+{
+  "name": "rkweb",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Rummle — a web-based, real-time, multiplayer Rummikub-like tile game.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --noEmit",
+    "emulators": "firebase emulators:start --only auth,firestore",
+    "dev:all": "concurrently -k \"npm:emulators\" \"npm:dev\""
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.1.0",
+    "@dnd-kit/sortable": "^8.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "firebase": "^10.12.2",
+    "nanoid": "^5.0.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^8.2.2",
+    "firebase-tools": "^13.11.2",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.1",
+    "vitest": "^1.6.0"
+  }
+}

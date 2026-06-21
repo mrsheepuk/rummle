@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Baseline rules for Rummle.
+//
+// NOTE ON CHEATING: for now, a game's full state (including every player's
+// hidden rack) lives in a single document that all players in the game can
+// read. A determined player could therefore read opponents' tiles directly
+// from Firestore. This is a known, accepted trade-off for the initial build
+// (see README "Cheat safety"). The data is modelled so it can later be split
+// into per-player private subcollections owned by a Cloud Function without
+// changing the client's sync interface.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /games/{gameId} {
+      // Anyone signed in can read a game (needed to look up a game by code and
+      // to render the shared table). Tighten to members-only once hands move
+      // to a private subcollection.
+      allow read: if request.auth != null;
+
+      // Create: must be signed in and list yourself as a player.
+      allow create: if request.auth != null
+        && request.resource.data.players[request.auth.uid] != null;
+
+      // Update: must be signed in and already be a player in the game, OR be
+      // joining an open lobby (adding yourself to the players map).
+      allow update: if request.auth != null
+        && (
+          resource.data.players[request.auth.uid] != null
+          || request.resource.data.players[request.auth.uid] != null
+        );
+
+      allow delete: if false;
+    }
+
+    // Ephemeral in-progress turn preview (the active player's working table).
+    // Advisory only — never the authoritative state. Any signed-in user can
+    // watch; only a player in the game may write/clear it.
+    match /games/{gameId}/draft/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && get(/databases/$(database)/documents/games/$(gameId)).data.players[request.auth.uid] != null;
+    }
+  }
+}

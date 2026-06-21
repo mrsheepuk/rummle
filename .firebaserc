@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "demo-rummle",
+    "prod": "rummle-prod"
+  }
+}

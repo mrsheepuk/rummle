@@ -1,0 +1,39 @@
+name: Deploy to live on merge to main
+
+# On every push to main (i.e. a merged PR), builds the app and deploys it to
+# the live Firebase Hosting channel.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hosting-live
+  cancel-in-progress: false
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_USE_EMULATOR: "false"
+          VITE_FIREBASE_PROJECT_ID: rummle-prod
+          VITE_FIREBASE_AUTH_DOMAIN: rummle-prod.firebaseapp.com
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_RUMMLE_PROD }}
+          projectId: rummle-prod
+          channelId: live
