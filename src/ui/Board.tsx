@@ -453,9 +453,12 @@ export function Board({
   }
 
   // Animate the table only when spectating: glide opponents' tiles between
-  // melds as their throttled draft snapshots stream in. `committedKey` changes
-  // with each new draft we're mirroring.
-  const tableRef = useTileFlip<HTMLDivElement>(!myTurn, committedKey);
+  // melds as their throttled draft snapshots stream in. Key on the *rendered*
+  // table (`melds`/`meldOrder`), not the incoming `committedTable` prop — for a
+  // spectator `melds` is reseeded from the draft a render later (in the sync
+  // effect), so keying on the prop measures the DOM one draft behind and lights
+  // up the previously dropped tile instead of the current one.
+  const tableRef = useTileFlip<HTMLDivElement>(!myTurn, `${meldsKey}|${orderKey}`);
 
   const activeTile = activeId ? index.get(activeId) : null;
   const activeMeld = activeId && activeId in melds ? melds[activeId] ?? null : null;
