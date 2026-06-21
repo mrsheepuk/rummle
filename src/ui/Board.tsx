@@ -379,7 +379,6 @@ export function Board({
   const activeTile = activeId ? index.get(activeId) : null;
   const activeMeld = activeId && activeId in melds ? melds[activeId] ?? null : null;
   const meldKeys = syncOrder(meldOrder, melds).filter((k) => (melds[k] ?? []).length > 0);
-  const rackCount = slots.reduce((n, s) => n + (s ? 1 : 0), 0);
 
   return (
     <DndContext
@@ -399,9 +398,6 @@ export function Board({
       </div>
 
       <div className="rack-area">
-        <div className="rack-header">
-          <span>Your tiles ({rackCount})</span>
-        </div>
         <div className="rack-grid">
           {slots.map((tileId, i) => (
             <Slot key={i} index={i} tile={tileId ? index.get(tileId) : undefined} />
