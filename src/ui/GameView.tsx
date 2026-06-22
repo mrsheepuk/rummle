@@ -220,9 +220,9 @@ export function GameView({
                     <span className="menu-ico" aria-hidden="true">{muted ? "🔇" : "🔊"}</span>
                     {muted ? "Unmute sounds" : "Mute sounds"}
                   </button>
-                  <button className="menu-item danger" role="menuitem" onClick={onLeave}>
+                  <button className="menu-item" role="menuitem" onClick={onLeave}>
                     <span className="menu-ico" aria-hidden="true">⎋</span>
-                    Leave game
+                    Home
                   </button>
                 </div>
               </>

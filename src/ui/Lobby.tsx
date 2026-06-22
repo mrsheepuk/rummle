@@ -89,7 +89,7 @@ export function Lobby({
 
         {error && <p className="error">{error}</p>}
         <button className="btn btn-link" onClick={onLeave}>
-          Leave
+          Home
         </button>
       </div>
     </div>
