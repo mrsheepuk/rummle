@@ -425,6 +425,96 @@ input:focus {
   border-color: transparent;
 }
 
+/* ----- "Your games" list ----- */
+.games-card {
+  gap: 0.6rem;
+}
+
+.games-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.game-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  background: var(--bg-input);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text);
+}
+
+.game-card:hover {
+  border-color: var(--accent);
+}
+
+.game-card.is-turn {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.game-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.game-card-code {
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--green);
+}
+
+.game-card-players {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.game-card-time {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.badge-turn {
+  background: var(--accent);
+  color: #3a2708;
+  border-color: transparent;
+}
+
+.badge-lobby {
+  background: var(--green);
+  color: #ede2c6;
+  border-color: transparent;
+}
+
+.badge-done {
+  background: var(--bg-soft);
+  color: var(--muted);
+}
+
 /* ----- Game ----- */
 .game {
   flex: 1;

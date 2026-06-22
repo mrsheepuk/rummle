@@ -2,8 +2,9 @@ import { useState } from "react";
 import { APP_NAME, APP_TAGLINE, NAME_KEY } from "../constants";
 import { createNewGame, joinGame } from "../sync/gameSync";
 import { CODE_LENGTH, normalizeCode } from "../sync/codes";
+import { MyGames } from "./MyGames";
 
-export function Home({ onEnterGame }: { onEnterGame: (id: string) => void }) {
+export function Home({ uid, onEnterGame }: { uid: string; onEnterGame: (id: string) => void }) {
   const [name, setName] = useState(localStorage.getItem(NAME_KEY) ?? "");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -81,6 +82,8 @@ export function Home({ onEnterGame }: { onEnterGame: (id: string) => void }) {
 
         {error && <p className="error">{error}</p>}
       </div>
+
+      <MyGames uid={uid} currentId={null} onOpen={onEnterGame} />
 
       <footer className="home-footer">
         <p>Anonymous play — just pick a name and share the code.</p>

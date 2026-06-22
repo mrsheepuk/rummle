@@ -22,7 +22,7 @@ export function App() {
   if (authLoading || !user) return <Splash spinner />;
 
   if (!gameId) {
-    return <Home onEnterGame={goToGame} />;
+    return <Home uid={user.uid} onEnterGame={goToGame} />;
   }
 
   if (gameLoading) return <Splash message={`Loading game ${gameId}…`} />;

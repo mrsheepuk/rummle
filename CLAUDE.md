@@ -43,6 +43,17 @@ a Firestore transaction → `onSnapshot` pushes new state back to all clients.
 - **Firestore has no nested arrays.** `GameState.table` is `string[][]` in app
   code but stored as `{ tiles: string[] }[]`. Conversion lives in
   `gameSync.ts` (`toStored`/`fromStored`). Don't store raw `string[][]`.
+- **`memberUids` is a derived storage-only index.** Firestore can't query a
+  map's keys, so `toStored` denormalises `Object.keys(players)` into a
+  `memberUids: string[]` field. It powers `subscribeMyGames` (the "Your games"
+  list on `Home`) via `array-contains` + `orderBy(updatedAt)` — needs the
+  composite index in `firestore.indexes.json` in prod (the emulator
+  auto-indexes). It lives only on `StoredGame`, never on the pure-engine
+  `GameState`, so it can't drift from `players`. Keyed by the anonymous uid:
+  per-browser today, but Firebase preserves the uid through anonymous→linked
+  upgrades, so the same index works unchanged once cross-device identity lands.
+  Note `updatedAt` is a server `Timestamp` at rest despite the `number` type —
+  `toSummary`/`toMillis` normalise it for sorting + the 24h "show older" fold.
 - **Deck is rebuilt from `seed`** (`buildIndex` in `engine.ts`) to resolve tile
   ids → tiles; the deck itself isn't persisted. Same seed ⇒ same deck.
 - **Cheat safety is intentionally weak for now.** All hands live in the shared
