@@ -31,6 +31,7 @@ export function createGame(args: {
   };
   return {
     id: args.id,
+    gameType: "rummle",
     status: "lobby",
     hostId: args.hostId,
     seed: args.seed,

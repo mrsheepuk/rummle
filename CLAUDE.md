@@ -38,6 +38,51 @@ stays unit-tested and could move server-side later:
 Data flow: UI calls `sync/gameSync` → runs a `state/engine` pure function inside
 a Firestore transaction → `onSnapshot` pushes new state back to all clients.
 
+### Multi-game platform (POC)
+
+The codebase now hosts **more than one game**. The game-agnostic machinery was
+lifted into a thin platform layer so a second game (a Scrabble-like **Word
+Tiles**, in `src/games/words/`) could ride it:
+
+- `src/platform/` — the shared, game-neutral layer.
+  - `model.ts` the `BaseGameState` *envelope* (id, `gameType` discriminant,
+    status, players, turnOrder, currentTurn, seed, winner) + generic lobby
+    helpers (`seatPlayer`, `currentPlayerId`, `nextTurn`). Each game extends the
+    envelope with its own payload.
+  - `firestoreSync.ts` the transaction/subscription plumbing every game reuses
+    (`createGameDoc`/`mutateGame`/`subscribeGameDoc`/`subscribeMyGames`/
+    `joinGameDoc`/`ensureSignedIn`), parameterised by a per-game `Codec` (the
+    only game-specific bit: how state reshapes into a storable doc).
+- `src/games/words/` — the second game as a self-contained module: `types.ts`
+  (letter set, premiums), `tiles.ts` (100-tile bag), `model.ts`
+  (`WordsGameState`), `engine.ts` (pure rules), `sync.ts` (codec + actions),
+  `ui/` (`WordsGameView`, `WordsBoard`, `LetterTile`).
+- `src/games/registry.ts` — the one place that knows *every* game type. It
+  composes the two games for the operations done before you know the type:
+  `subscribeAnyGame` (dispatches codec on stored `gameType`) and `joinAnyGame`
+  (touches only the envelope's player roster, so no codec needed). Creating /
+  turn actions / rendering are dispatched by the caller on `state.gameType`
+  (see `App.tsx`, `Home.tsx`, `Lobby.tsx`).
+
+**Rummle was left in place** (`src/game`, `src/state`, `src/sync/gameSync.ts`)
+rather than relocated under `games/rummle/` — that move is the obvious follow-up,
+kept out of the POC to keep its diff reviewable. Rummle now extends
+`BaseGameState` and rides the platform helpers; its `gameSync.ts` is just a codec
+(meld-table reshape) + actions + the live draft.
+
+**Word Tiles specifics / scope.** Standard English distribution (100 tiles, 2
+blanks = the joker analog), 15×15 board with standard premium squares, rack of 7,
+scoring with letter/word premiums + the 50-pt bingo, exchange/pass, classic
+end-of-game rack adjustment. **No dictionary — self-policing** (deliberate POC
+choice, like Rummle's loose mid-turn rules): the engine enforces geometry
+(single line, gap-free, connected, opening play crosses the centre) and tile
+conservation, but never checks that words are real. A dictionary (client DAWG or
+a Cloud-Function validator — the latter also fixes cheat-safety) is the obvious
+next step. The board is stored as a **flat list of `{r,c,tileId,letter}`
+placements**, which both sidesteps the no-nested-arrays rule a 2-D grid would hit
+and is denser. UI is **tap-to-place** (select rack tile → tap cell; tap a staged
+tile to recall); drag-and-drop and live-draft spectating are follow-ups.
+
 ## Gotchas / decisions
 
 - **Firestore has no nested arrays.** `GameState.table` is `string[][]` in app

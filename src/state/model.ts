@@ -1,16 +1,14 @@
 import type { MeldIds } from "../game/rules";
+import type { BaseGameState } from "../platform/model";
 
-export type GameStatus = "lobby" | "playing" | "finished";
-
-export interface PlayerInfo {
-  uid: string;
-  name: string;
-  seat: number;
-  joinedAt: number;
-}
+// Shared envelope types now live in the platform layer; re-exported here so the
+// existing Rummle imports keep working unchanged.
+export { MAX_PLAYERS, MIN_PLAYERS } from "../platform/model";
+export type { GameStatus, PlayerInfo } from "../platform/model";
 
 /**
- * The full game document as stored in Firestore (one doc per game).
+ * The full Rummle game document as stored in Firestore (one doc per game),
+ * extending the platform's shared envelope with Rummle's own payload.
  *
  * NOTE: `hands` currently holds every player's rack in the shared document, so
  * it is readable by all players (the accepted "cheat safety: don't care for
@@ -18,19 +16,8 @@ export interface PlayerInfo {
  * be moved into a private, Cloud-Function-owned subcollection without touching
  * the rest of the model or the sync interface.
  */
-export interface GameState {
-  id: string;
-  status: GameStatus;
-  hostId: string;
-  seed: number;
-  createdAt: number;
-  updatedAt: number;
-
-  players: Record<string, PlayerInfo>;
-  /** Seating order (uids). Drives whose turn it is. */
-  turnOrder: string[];
-  /** Index into turnOrder of the player to move. */
-  currentTurn: number;
+export interface GameState extends BaseGameState {
+  gameType: "rummle";
 
   /** Remaining tiles to draw ("the pouch"), as tile ids. */
   pool: string[];
@@ -40,9 +27,4 @@ export interface GameState {
   hands: Record<string, string[]>;
   /** Whether each player has made their 30-point opening play. */
   hasOpened: Record<string, boolean>;
-
-  winnerId: string | null;
 }
-
-export const MAX_PLAYERS = 4;
-export const MIN_PLAYERS = 2;

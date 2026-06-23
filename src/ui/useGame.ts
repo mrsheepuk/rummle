@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { subscribeGame } from "../sync/gameSync";
-import type { GameState } from "../state/model";
+import { subscribeAnyGame, type AnyGameState } from "../games/registry";
 
 export interface GameSubscription {
-  game: GameState | null;
+  game: AnyGameState | null;
   loading: boolean;
   error: string | null;
   /** True when we're serving cached (possibly out-of-date) data, i.e. offline. */
@@ -12,7 +11,7 @@ export interface GameSubscription {
 
 /** Live-subscribes to a game document and re-renders on every change. */
 export function useGame(gameId: string | null): GameSubscription {
-  const [game, setGame] = useState<GameState | null>(null);
+  const [game, setGame] = useState<AnyGameState | null>(null);
   const [loading, setLoading] = useState<boolean>(!!gameId);
   const [error, setError] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
@@ -25,7 +24,7 @@ export function useGame(gameId: string | null): GameSubscription {
       return;
     }
     setLoading(true);
-    const unsub = subscribeGame(
+    const unsub = subscribeAnyGame(
       gameId,
       (state, fromCache) => {
         setGame(state);

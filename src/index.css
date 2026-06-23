@@ -1124,3 +1124,158 @@ input:focus {
     font-size: 2.1rem;
   }
 }
+
+/* ============================================================
+   Word Tiles — the platform's second game. Reuses the shared
+   game-bar / action-bar / chip styles; everything below is the
+   board grid, letter tiles and rack specific to the word game.
+   ============================================================ */
+
+/* Home: two create buttons side by side, plus the my-games type chip. */
+.create-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.create-row .btn-primary {
+  flex: 1 1 0;
+  min-width: 9rem;
+}
+.btn-words {
+  background: var(--green);
+}
+.game-card-type {
+  margin-left: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* The 15×15 board. */
+.wboard {
+  --wcell: clamp(18px, 5.6vw, 34px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: max-content;
+  max-width: 100%;
+  margin: 0.5rem auto;
+  padding: 6px;
+  background: var(--felt-lo);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.25);
+}
+.wrow {
+  display: flex;
+  gap: 2px;
+}
+.wcell {
+  width: var(--wcell);
+  height: var(--wcell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background: var(--felt-hi);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: calc(var(--wcell) * 0.3);
+  font-weight: 600;
+  user-select: none;
+}
+.wcell-dl { background: #2f6f8f; }
+.wcell-tl { background: #1f5673; }
+.wcell-dw { background: #9e5a3b; }
+.wcell-tw { background: #8a2f25; }
+.wcell-center { background: #9e5a3b; }
+.wcell-premium { opacity: 0.85; color: #fff; }
+
+/* A placed tile (committed or staged) — an aged-ivory cap, like Rummle tiles. */
+.wcell-filled { cursor: default; }
+.wcell-tile {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--tile-bg-1), var(--tile-bg-3));
+  color: var(--text);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+.wcell-letter {
+  font-size: calc(var(--wcell) * 0.5);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.wcell-value {
+  position: absolute;
+  right: 1px;
+  bottom: 0;
+  font-size: calc(var(--wcell) * 0.26);
+  color: var(--muted);
+}
+.wcell-staged .wcell-tile {
+  outline: 2px solid var(--accent);
+  cursor: pointer;
+}
+
+/* The rack — a row of selectable letter tiles. */
+.wrack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+  padding: 0.6rem;
+  margin: 0.5rem auto;
+  background: var(--tray);
+  border-radius: 10px;
+  min-height: 3rem;
+  align-items: center;
+}
+.wtile {
+  position: relative;
+  width: 2.4rem;
+  height: 2.6rem;
+  border: none;
+  border-radius: 5px;
+  background: linear-gradient(180deg, var(--tile-bg-1), var(--tile-bg-3));
+  color: var(--text);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wtile-clickable { cursor: pointer; }
+.wtile-selected {
+  outline: 3px solid var(--accent);
+  transform: translateY(-3px);
+}
+.wtile-face {
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.wtile-value {
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+.wtile-blank .wtile-face { color: var(--accent); }
+
+/* Live score preview under the rack. */
+.wpreview {
+  text-align: center;
+  font-weight: 700;
+  color: var(--green);
+  margin: 0.2rem 0;
+}
+.wpreview.is-bad {
+  color: var(--danger);
+  font-weight: 500;
+}

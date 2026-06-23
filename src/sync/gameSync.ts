@@ -1,109 +1,77 @@
-// Sync layer: the only module that talks to Firestore for game state. The UI
-// depends on this interface, not on Firestore directly, so the storage backend
-// could later be swapped (e.g. for a Cloud-Function-authoritative version that
-// keeps hands private) without changing components.
+// Rummle's sync layer: the Rummle-specific glue on top of the shared platform
+// plumbing (`platform/firestoreSync`). It supplies a Codec (the meld-table
+// reshaping Firestore needs) and the Rummle turn actions; transactions,
+// subscriptions and the "your games" query are all reused from the platform.
 
 import {
-  collection,
   deleteDoc,
   doc,
   getDocFromServer,
   onSnapshot,
-  orderBy,
-  query,
-  runTransaction,
   serverTimestamp,
   setDoc,
-  Timestamp,
-  where,
 } from "firebase/firestore";
-import { signInAnonymously, type User } from "firebase/auth";
-import { auth, db } from "./firebase";
-import { logConn } from "./connectionLog";
-import { newGameCode, normalizeCode } from "./codes";
+import { db } from "./firebase";
 import { randomSeed } from "../game/rng";
 import type { MeldIds } from "../game/rules";
 import type { GameState, GameStatus } from "../state/model";
 import {
-  addPlayer,
   applyCommit,
   applyDraw,
   createGame,
   startGame,
 } from "../state/engine";
+import {
+  COLLECTION,
+  createGameDoc,
+  ensureSignedIn,
+  gameRef,
+  mutateGame,
+  subscribeGameDoc,
+  toMillis,
+  type Codec,
+} from "../platform/firestoreSync";
 
-const COLLECTION = "games";
+// Re-exported so existing UI imports (useGame, MyGames, …) keep their source.
+export { ensureSignedIn };
+export {
+  subscribeMyGames,
+  type GameSummary,
+} from "../platform/firestoreSync";
 
 /**
  * Firestore disallows nested arrays, so a meld is stored as { tiles: [...] }.
- *
- * `memberUids` is a denormalised index of the `players` map's keys. Firestore
- * can't query map keys, so this array (maintained purely in `toStored`, never in
- * the pure engine) is what powers the "list my games" query via `array-contains`.
- * It's a derived projection — it can't drift from `players`.
+ * That reshaping is the entirety of Rummle's storage codec.
  */
 interface StoredGame extends Omit<GameState, "table"> {
   table: { tiles: string[] }[];
-  memberUids: string[];
 }
 
-function toStored(state: GameState): StoredGame {
-  return {
-    ...state,
-    table: state.table.map((tiles) => ({ tiles })),
-    memberUids: Object.keys(state.players),
-  };
-}
-
-function fromStored(data: StoredGame): GameState {
-  return { ...data, table: (data.table ?? []).map((m) => m.tiles) };
-}
-
-export async function ensureSignedIn(): Promise<User> {
-  if (auth.currentUser) return auth.currentUser;
-  const cred = await signInAnonymously(auth);
-  return cred.user;
-}
+export const rummleCodec: Codec<GameState> = {
+  toStored(state) {
+    return { ...state, table: state.table.map((tiles) => ({ tiles })) };
+  },
+  fromStored(data) {
+    const d = data as unknown as StoredGame;
+    return { ...(d as object), table: (d.table ?? []).map((m) => m.tiles) } as GameState;
+  },
+};
+const codec = rummleCodec;
 
 export async function createNewGame(hostName: string): Promise<string> {
   const user = await ensureSignedIn();
-  // Codes are never reclaimed, so the namespace fills monotonically. Generate
-  // and claim inside a transaction so a collision retries with a fresh code
-  // rather than silently clobbering an existing game.
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const id = newGameCode();
-    const claimed = await runTransaction(db, async (tx) => {
-      const ref = gameRef(id);
-      if ((await tx.get(ref)).exists()) return false;
-      const state = createGame({
-        id,
-        hostId: user.uid,
-        hostName,
-        seed: randomSeed(),
-        now: Date.now(),
-      });
-      tx.set(ref, { ...toStored(state), updatedAt: serverTimestamp() });
-      return true;
-    });
-    if (claimed) return id;
-  }
-  throw new Error("Could not allocate a unique game code; please try again");
-}
-
-export async function joinGame(code: string, name: string): Promise<string> {
-  const user = await ensureSignedIn();
-  const id = normalizeCode(code);
-  await mutate(id, (state) => addPlayer(state, user.uid, name, Date.now()));
-  return id;
+  return createGameDoc(codec, (id) =>
+    createGame({ id, hostId: user.uid, hostName, seed: randomSeed(), now: Date.now() }),
+  );
 }
 
 export async function beginGame(id: string, opts: { allowSolo?: boolean } = {}): Promise<void> {
-  await mutate(id, (state) => startGame(state, Date.now(), opts));
+  await mutateGame(id, codec, (state) => startGame(state, Date.now(), opts));
 }
 
 export async function drawTile(id: string): Promise<void> {
   const user = await ensureSignedIn();
-  await mutate(id, (state) => applyDraw(state, user.uid, Date.now()));
+  await mutateGame(id, codec, (state) => applyDraw(state, user.uid, Date.now()));
   await clearDraft(id);
 }
 
@@ -113,126 +81,29 @@ export async function commitTurn(
   afterRack: string[],
 ): Promise<void> {
   const user = await ensureSignedIn();
-  await mutate(id, (state) => applyCommit(state, user.uid, afterTable, afterRack, Date.now()));
+  await mutateGame(id, codec, (state) => applyCommit(state, user.uid, afterTable, afterRack, Date.now()));
   await clearDraft(id);
 }
 
-/**
- * `fromCache` reports whether this snapshot was served from the local cache
- * (i.e. we're not currently synced with the server) — a real connection signal
- * we use to drive the offline indicator and to gate reconnection, rather than
- * guessing from tab-visibility timing. Needs `includeMetadataChanges` so a pure
- * online↔offline transition (no document change) still fires the callback.
- */
 export function subscribeGame(
   id: string,
   onChange: (state: GameState | null, fromCache: boolean) => void,
   onError?: (err: Error) => void,
 ): () => void {
-  return onSnapshot(
-    gameRef(id),
-    { includeMetadataChanges: true },
-    (snap) => {
-      const fromCache = snap.metadata.fromCache;
-      const data = snap.exists() ? (snap.data() as StoredGame) : null;
-      logConn(
-        "snapshot",
-        `fromCache=${fromCache} pending=${snap.metadata.hasPendingWrites}` +
-          (data ? ` turn=${data.currentTurn} status=${data.status}` : " (deleted)"),
-      );
-      if (!data) return onChange(null, fromCache);
-      onChange(fromStored(data), fromCache);
-    },
-    (err) => {
-      logConn("note", `snapshot error: ${err.message}`);
-      onError?.(err);
-    },
-  );
+  return subscribeGameDoc(id, codec, onChange, onError);
 }
 
 /**
  * One-shot server-forced read, for diagnostics. Distinguishes "the listener
- * stalled but the network is fine" (this returns fresh data quickly) from "the
- * device is genuinely offline" (this hangs or rejects).
+ * stalled but the network is fine" from "the device is genuinely offline".
  */
 export async function probeGameFromServer(
   id: string,
 ): Promise<{ turn: number; status: GameStatus; updatedAtMs: number } | null> {
   const snap = await getDocFromServer(gameRef(id));
   if (!snap.exists()) return null;
-  const data = snap.data() as StoredGame;
+  const data = snap.data() as { currentTurn: number; status: GameStatus; updatedAt: unknown };
   return { turn: data.currentTurn, status: data.status, updatedAtMs: toMillis(data.updatedAt) };
-}
-
-// --- "my games" list -------------------------------------------------------
-//
-// One live query, keyed by the anonymous uid, surfaces every game this player
-// belongs to. Each game doc already carries enough state (status, turn order)
-// to render badges like "your turn" without any extra reads, so the whole list
-// — live status included — is driven by this single snapshot listener.
-//
-// Keyed by uid means it's per-browser today; because Firebase keeps the same
-// uid when an anonymous account is later upgraded/linked, the same index works
-// unchanged once portable (cross-device) identity is added.
-
-/** A lightweight, list-friendly view of a game the player is in. */
-export interface GameSummary {
-  id: string;
-  status: GameStatus;
-  /** Last activity (any write), as epoch millis — drives sorting and the 24h fold. */
-  updatedAtMs: number;
-  /** The player's own display name in this game. */
-  myName: string;
-  /** All players, ordered by seat. */
-  playerNames: string[];
-  /** True when it's this player's move (status playing + active seat is theirs). */
-  myTurn: boolean;
-  /** Winner's name once finished, else null. */
-  winnerName: string | null;
-}
-
-export function subscribeMyGames(
-  uid: string,
-  onChange: (games: GameSummary[]) => void,
-  onError?: (err: Error) => void,
-): () => void {
-  const q = query(
-    collection(db, COLLECTION),
-    where("memberUids", "array-contains", uid),
-    orderBy("updatedAt", "desc"),
-  );
-  return onSnapshot(
-    q,
-    (snap) => onChange(snap.docs.map((d) => toSummary(d.data() as StoredGame, uid))),
-    (err) => onError?.(err),
-  );
-}
-
-function toSummary(data: StoredGame, uid: string): GameSummary {
-  const players = Object.values(data.players).sort((a, b) => a.seat - b.seat);
-  const active = data.turnOrder[data.currentTurn];
-  const winner = data.winnerId ? data.players[data.winnerId] : undefined;
-  return {
-    id: data.id,
-    status: data.status,
-    updatedAtMs: toMillis(data.updatedAt),
-    myName: data.players[uid]?.name ?? "",
-    playerNames: players.map((p) => p.name),
-    myTurn: data.status === "playing" && active === uid,
-    winnerName: winner?.name ?? null,
-  };
-}
-
-/**
- * `updatedAt` is written as a server `Timestamp` (the model types it `number`
- * for the pure engine's benefit). A freshly-created doc reports `null` locally
- * until the server resolves it — treat that as "just now" so it doesn't briefly
- * sort to the bottom / fold away.
- */
-function toMillis(value: unknown): number {
-  if (value instanceof Timestamp) return value.toMillis();
-  if (typeof value === "number") return value;
-  return Date.now();
 }
 
 // --- live draft (in-progress turn preview) ---------------------------------
@@ -285,24 +156,6 @@ export function subscribeDraft(id: string, onChange: (draft: Draft | null) => vo
   );
 }
 
-// --- internals -------------------------------------------------------------
-
-function gameRef(id: string) {
-  return doc(db, COLLECTION, id);
-}
-
 function draftRef(id: string) {
   return doc(db, COLLECTION, id, "draft", "current");
-}
-
-/** Reads, transforms with a pure engine function, and writes atomically. */
-async function mutate(id: string, transform: (state: GameState) => GameState): Promise<void> {
-  await runTransaction(db, async (tx) => {
-    const ref = gameRef(id);
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error(`Game ${id} not found`);
-    const current = fromStored(snap.data() as StoredGame);
-    const next = transform(current);
-    tx.set(ref, { ...toStored(next), updatedAt: serverTimestamp() });
-  });
 }

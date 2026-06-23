@@ -1,20 +1,20 @@
 import { useState } from "react";
 import { NAME_KEY } from "../constants";
-import { joinGame } from "../sync/gameSync";
-import type { GameState } from "../state/model";
+import { joinAnyGame } from "../games/registry";
+import { GAME_LABELS, type BaseGameState } from "../platform/model";
 
 /**
  * Shown when a signed-in user lands on `/g/CODE` (e.g. via a share link) but
  * isn't yet a member of the game. They see who's already in, then confirm a
  * display name to join — pre-filled with their remembered name so it's a single
- * click. Joining just adds them via `joinGame`; the live game subscription then
+ * click. Joining just adds them via `joinAnyGame`; the live game subscription then
  * picks up their membership and `App` routes them into the lobby.
  */
 export function JoinPrompt({
   game,
   onLeave,
 }: {
-  game: GameState;
+  game: BaseGameState;
   onLeave: () => void;
 }) {
   const [name, setName] = useState(localStorage.getItem(NAME_KEY) ?? "");
@@ -29,7 +29,7 @@ export function JoinPrompt({
     setError(null);
     try {
       localStorage.setItem(NAME_KEY, name.trim());
-      await joinGame(game.id, name.trim());
+      await joinAnyGame(game.id, name.trim());
       // Success: the subscription will re-render us into the lobby, so we
       // intentionally stay "busy" until this component unmounts.
     } catch (e) {
@@ -41,7 +41,7 @@ export function JoinPrompt({
   return (
     <div className="lobby">
       <div className="card">
-        <h2>Join game</h2>
+        <h2>Join {GAME_LABELS[game.gameType]}</h2>
 
         <div className="code-display">
           <span className="code-label">Share code</span>

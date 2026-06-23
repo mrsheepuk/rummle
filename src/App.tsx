@@ -8,6 +8,7 @@ import { Home } from "./ui/Home";
 import { Lobby } from "./ui/Lobby";
 import { JoinPrompt } from "./ui/JoinPrompt";
 import { GameView } from "./ui/GameView";
+import { WordsGameView } from "./games/words/ui/WordsGameView";
 import { DebugOverlay } from "./ui/DebugOverlay";
 
 export function App() {
@@ -67,6 +68,9 @@ export function App() {
 
     if (game.status === "lobby") {
       return <Lobby game={game} me={user.uid} onLeave={goHome} />;
+    }
+    if (game.gameType === "words") {
+      return <WordsGameView game={game} me={user.uid} onLeave={goHome} stale={stale} />;
     }
     return <GameView game={game} me={user.uid} onLeave={goHome} stale={stale} />;
   }

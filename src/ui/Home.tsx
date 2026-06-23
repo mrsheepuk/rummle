@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { APP_NAME, APP_TAGLINE, NAME_KEY } from "../constants";
-import { createNewGame, joinGame } from "../sync/gameSync";
+import { createNewGame } from "../sync/gameSync";
+import { createWordsGameDoc } from "../games/words/sync";
+import { joinAnyGame } from "../games/registry";
+import { GAME_LABELS, type GameType } from "../platform/model";
 import { CODE_LENGTH, normalizeCode } from "../sync/codes";
 import { MyGames } from "./MyGames";
 
@@ -12,13 +15,14 @@ export function Home({ uid, onEnterGame }: { uid: string; onEnterGame: (id: stri
 
   const rememberName = () => localStorage.setItem(NAME_KEY, name.trim());
 
-  async function handleCreate() {
+  async function handleCreate(gameType: GameType) {
     if (!name.trim()) return setError("Enter a display name first");
     setBusy(true);
     setError(null);
     try {
       rememberName();
-      const id = await createNewGame(name.trim());
+      const create = gameType === "words" ? createWordsGameDoc : createNewGame;
+      const id = await create(name.trim());
       onEnterGame(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create game");
@@ -34,7 +38,7 @@ export function Home({ uid, onEnterGame }: { uid: string; onEnterGame: (id: stri
     setError(null);
     try {
       rememberName();
-      const id = await joinGame(code, name.trim());
+      const id = await joinAnyGame(code, name.trim());
       onEnterGame(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not join game");
@@ -61,9 +65,14 @@ export function Home({ uid, onEnterGame }: { uid: string; onEnterGame: (id: stri
           />
         </label>
 
-        <button className="btn btn-primary" disabled={busy} onClick={handleCreate}>
-          Create a new game
-        </button>
+        <div className="create-row">
+          <button className="btn btn-primary" disabled={busy} onClick={() => handleCreate("rummle")}>
+            New {GAME_LABELS.rummle} game
+          </button>
+          <button className="btn btn-primary btn-words" disabled={busy} onClick={() => handleCreate("words")}>
+            New {GAME_LABELS.words} game
+          </button>
+        </div>
 
         <div className="divider">or join with a code</div>
 
