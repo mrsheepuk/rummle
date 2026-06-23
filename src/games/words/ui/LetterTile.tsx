@@ -1,36 +1,29 @@
 import type { LetterTile as LetterTileT } from "../types";
 
 /**
- * A single letter tile. On the rack it shows its own letter and point value; a
- * blank shows a star until it's been assigned a letter on the board. Mirrors the
- * colour-blind-friendly redundancy idea from Rummle's TileView (letter + value,
- * not colour alone).
+ * A presentational rack/overlay letter tile. Interaction (drag, tap-to-select)
+ * is owned by the draggable wrapper in WordsBoard, so this is just the face.
+ * A blank shows a star until it's been assigned a letter. Mirrors the
+ * colour-blind-friendly redundancy from Rummle's TileView (letter + value).
  */
 export function LetterTile({
   tile,
-  /** Effective letter to show (a blank's assigned letter on the board). */
+  /** Effective letter to show (a blank's assigned letter). */
   shown,
   selected,
-  onClick,
 }: {
   tile: LetterTileT;
   shown?: string;
   selected?: boolean;
-  onClick?: () => void;
 }) {
   const letter = shown ?? tile.letter;
-  const cls = [
-    "wtile",
-    tile.isBlank ? "wtile-blank" : "",
-    selected ? "wtile-selected" : "",
-    onClick ? "wtile-clickable" : "",
-  ]
+  const cls = ["wtile", tile.isBlank ? "wtile-blank" : "", selected ? "wtile-selected" : ""]
     .filter(Boolean)
     .join(" ");
   return (
-    <button type="button" className={cls} onClick={onClick} disabled={!onClick}>
+    <span className={cls}>
       <span className="wtile-face">{letter ?? "★"}</span>
       <span className="wtile-value">{tile.isBlank ? "" : tile.value}</span>
-    </button>
+    </span>
   );
 }

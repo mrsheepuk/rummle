@@ -3,9 +3,8 @@ import { playTurnComplete, playWin } from "../../../ui/sounds";
 import { buildIndex, currentPlayerId, scorePlay } from "../engine";
 import { commitWordsPlay, exchangeWordsTiles, passWordsTurn } from "../sync";
 import { GameError } from "../../../platform/model";
-import type { WordsGameState, Placement } from "../model";
-import { LetterTile } from "./LetterTile";
-import { WordsBoard } from "./WordsBoard";
+import type { WordsGameState } from "../model";
+import { WordsBoard, type WordsBoardHandle } from "./WordsBoard";
 
 export function WordsGameView({
   game,
@@ -19,8 +18,10 @@ export function WordsGameView({
   stale: boolean;
 }) {
   const index = useMemo(() => buildIndex(game), [game.seed]);
-  const [staged, setStaged] = useState<Placement[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
+  const handle = useRef<WordsBoardHandle>({ staged: [], selected: [] });
+  const [resetNonce, setResetNonce] = useState(0);
+  const [staged, setStaged] = useState(handle.current.staged);
+  const [selected, setSelected] = useState(handle.current.selected);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,27 +29,15 @@ export function WordsGameView({
   const myTurn = activeId === me && game.status === "playing";
   const players = Object.values(game.players).sort((a, b) => a.seat - b.seat);
 
-  // Clear the working play whenever the turn or committed board moves.
-  useEffect(() => {
-    setStaged([]);
-    setSelected(null);
-    setError(null);
-  }, [game.currentTurn, game.board.length, game.status]);
-
   // Turn chime / win flourish, matching Rummle's GameView.
-  const [prevTurn, prevStatus] = [useRef(game.currentTurn), useRef(game.status)];
+  const prevTurn = useRef(game.currentTurn);
+  const prevStatus = useRef(game.status);
   useEffect(() => {
     if (game.status === "finished" && prevStatus.current !== "finished") playWin();
     else if (game.status === "playing" && game.currentTurn !== prevTurn.current) playTurnComplete();
     prevTurn.current = game.currentTurn;
     prevStatus.current = game.status;
   }, [game.currentTurn, game.status]);
-
-  const stagedIds = new Set(staged.map((p) => p.tileId));
-  const rackTiles = (game.racks[me] ?? [])
-    .filter((id) => !stagedIds.has(id))
-    .map((id) => index.get(id))
-    .filter((t): t is NonNullable<typeof t> => !!t);
 
   // Live score preview reuses the pure engine — green total or the reason it's
   // illegal, before you commit.
@@ -60,25 +49,6 @@ export function WordsGameView({
       return { score: null, error: e instanceof GameError ? e.message : "Illegal play" };
     }
   }, [staged, game.board, index]);
-
-  function placeAt(r: number, c: number) {
-    if (!myTurn || !selected) return;
-    const tile = index.get(selected);
-    if (!tile) return;
-    let letter = tile.letter ?? "";
-    if (tile.isBlank) {
-      const ans = window.prompt("Assign a letter to the blank (A–Z):")?.trim().toUpperCase();
-      if (!ans || !/^[A-Z]$/.test(ans)) return setError("A blank needs a single letter A–Z");
-      letter = ans;
-    }
-    setStaged((s) => [...s, { r, c, tileId: selected, letter }]);
-    setSelected(null);
-    setError(null);
-  }
-
-  function recall(tileId: string) {
-    setStaged((s) => s.filter((p) => p.tileId !== tileId));
-  }
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -92,14 +62,19 @@ export function WordsGameView({
     }
   }
 
-  const onCommit = () => run(() => commitWordsPlay(game.id, staged));
+  const onCommit = () => run(() => commitWordsPlay(game.id, handle.current.staged));
   const onPass = () => run(() => passWordsTurn(game.id));
+  const onRecall = () => {
+    setError(null);
+    setResetNonce((k) => k + 1);
+  };
   const onExchange = () => {
-    if (!selected) return setError("Select a rack tile to exchange first");
-    void run(() => exchangeWordsTiles(game.id, [selected])).then(() => setSelected(null));
+    if (handle.current.selected.length === 0) return setError("Tap rack tiles to choose which to exchange");
+    void run(() => exchangeWordsTiles(game.id, handle.current.selected)).then(() => setResetNonce((k) => k + 1));
   };
 
   const winner = game.winnerId ? game.players[game.winnerId]?.name : null;
+  const working = staged.length > 0 || selected.length > 0;
 
   return (
     <div className="game wgame">
@@ -136,29 +111,25 @@ export function WordsGameView({
 
       <WordsBoard
         board={game.board}
-        staged={staged}
+        rack={game.racks[me] ?? []}
         index={index}
-        interactive={myTurn}
-        onPlace={placeAt}
-        onRecall={recall}
+        myTurn={myTurn}
+        storageKey={`words:rack:${game.id}:${me}`}
+        resetNonce={resetNonce}
+        onChange={(h) => {
+          handle.current = h;
+          setStaged(h.staged);
+          setSelected(h.selected);
+        }}
       />
 
-      <div className="wrack">
-        {rackTiles.map((tile) => (
-          <LetterTile
-            key={tile.id}
-            tile={tile}
-            selected={selected === tile.id}
-            onClick={myTurn ? () => setSelected((s) => (s === tile.id ? null : tile.id)) : undefined}
-          />
-        ))}
-        {rackTiles.length === 0 && <span className="hint">Rack empty.</span>}
-      </div>
-
-      {preview && (
+      {myTurn && preview && (
         <p className={`wpreview${preview.error ? " is-bad" : ""}`}>
           {preview.error ?? `+${preview.score} points`}
         </p>
+      )}
+      {myTurn && !preview && selected.length > 0 && (
+        <p className="wpreview is-muted">{selected.length} tile{selected.length > 1 ? "s" : ""} to exchange</p>
       )}
       {error && <p className="error game-error">{error}</p>}
 
@@ -167,7 +138,7 @@ export function WordsGameView({
           <span className="hint">Game over.</span>
         ) : myTurn ? (
           <>
-            <button className="btn btn-action is-reset" disabled={busy || staged.length === 0} onClick={() => setStaged([])}>
+            <button className="btn btn-action is-reset" disabled={busy || !working} onClick={onRecall}>
               Recall
             </button>
             {staged.length > 0 ? (
@@ -176,7 +147,7 @@ export function WordsGameView({
               </button>
             ) : (
               <>
-                <button className="btn btn-action is-draw" disabled={busy || !selected} onClick={onExchange}>
+                <button className="btn btn-action is-draw" disabled={busy || selected.length === 0} onClick={onExchange}>
                   Exchange
                 </button>
                 <button className="btn btn-action" disabled={busy} onClick={onPass}>
