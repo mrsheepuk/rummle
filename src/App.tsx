@@ -17,8 +17,9 @@ export function App() {
   // auth token exists gets a terminal permission-denied (the read rule requires
   // request.auth), which is what broke arriving via a share link.
   const { game, loading: gameLoading, error: gameError, stale } = useGame(user ? gameId : null);
-  // Only resync when we can see we're stale; healthy connections stay untouched.
-  useReconnectOnResume(stale);
+  // Reconnect after a long background (a frozen tab kills the stream silently);
+  // quick tab switches stay under the threshold and are left untouched.
+  useReconnectOnResume();
 
   return (
     <>

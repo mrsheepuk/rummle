@@ -2,34 +2,28 @@ import { useEffect, useRef } from "react";
 import { forceResync } from "../sync/connection";
 import { logConn } from "../sync/connectionLog";
 
-// How long to let the SDK settle after the tab is foregrounded before deciding
-// it's stuck. On resume from a frozen tab the SDK needs a moment to notice the
-// dead stream and flip its listeners to cached (stale); waiting briefly lets a
-// connection that recovers on its own do so, so we only kick when it doesn't.
-const SETTLE_MS = 1500;
+// A tab backgrounded longer than this may have been frozen by the OS (battery
+// saver, screen off), which silently kills the Firestore Listen stream without
+// the SDK noticing — so on resume we reconnect rather than trust the (dead)
+// stream. Shorter than this is a quick glance: the tab almost never freezes, so
+// we leave a healthy connection alone and avoid needless reconnect churn.
+const RESYNC_AFTER_HIDDEN_MS = 15_000;
+
+// Don't stack reconnects if visibility + online fire close together.
+const MIN_RESYNC_INTERVAL_MS = 3_000;
 
 /**
- * Reconnect Firestore when the tab is brought back to the foreground (or the
- * network returns) *and* we're observably stale — i.e. serving cached data
- * because the SDK hasn't resynced. A still-connected listener reports fresh
- * server data (`stale === false`), so it's left untouched: no disconnect churn
- * on quick tab switches, only a one-shot resync for a genuinely stuck stream.
+ * Reconnect Firestore after the tab returns from a long background, or when the
+ * network comes back. We trigger on the *duration the tab was hidden* rather
+ * than on observed staleness, because a frozen tab's stream dies invisibly:
+ * `fromCache` never flips, so there's no staleness to observe — but the hidden
+ * duration is still measured correctly across the freeze.
  */
-export function useReconnectOnResume(stale: boolean): void {
-  // Read the latest `stale` from the event handlers without re-binding them.
-  const staleRef = useRef(stale);
-  staleRef.current = stale;
+export function useReconnectOnResume(): void {
   const hiddenAt = useRef<number | null>(null);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const clear = () => {
-      if (timer) clearTimeout(timer);
-      timer = null;
-    };
-
     const onVisibility = () => {
-      clear();
       if (document.visibilityState !== "visible") {
         hiddenAt.current = Date.now();
         logConn("hidden");
@@ -37,18 +31,16 @@ export function useReconnectOnResume(stale: boolean): void {
       }
       const hiddenMs = hiddenAt.current ? Date.now() - hiddenAt.current : 0;
       hiddenAt.current = null;
-      logConn("visible", `hiddenMs=${hiddenMs} stale=${staleRef.current}`);
-      timer = setTimeout(() => {
-        logConn("note", `settle check: stale=${staleRef.current}`);
-        if (staleRef.current) void forceResync("visible");
-      }, SETTLE_MS);
+      logConn("visible", `hiddenMs=${hiddenMs}`);
+      if (hiddenMs >= RESYNC_AFTER_HIDDEN_MS) {
+        void forceResync("resume", MIN_RESYNC_INTERVAL_MS);
+      }
     };
 
-    // A regained network connection is an unambiguous, rare signal — kick at
-    // once if we're stale rather than waiting out the SDK's own backoff.
+    // Regained network: we were offline, so reconnect unconditionally.
     const onOnline = () => {
-      logConn("online", `stale=${staleRef.current}`);
-      if (staleRef.current) void forceResync("online");
+      logConn("online");
+      void forceResync("online", MIN_RESYNC_INTERVAL_MS);
     };
     const onOffline = () => logConn("offline");
 
@@ -56,7 +48,6 @@ export function useReconnectOnResume(stale: boolean): void {
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
     return () => {
-      clear();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);

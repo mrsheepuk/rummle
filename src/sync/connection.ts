@@ -11,19 +11,30 @@ import { db } from "./firebase";
 import { logConn } from "./connectionLog";
 
 let resyncing = false;
+let lastResyncAt = 0;
 
 /**
- * Force Firestore to reconnect now. Best-effort and reentrancy-guarded so
+ * Force Firestore to reconnect now by dropping and rebuilding the backend
+ * stream. This is the only reliable recovery for a half-dead Listen stream
+ * after a tab freeze: the SDK doesn't notice the stream died (no error, no
+ * `fromCache` flip, no snapshot), so cycling the network is what makes it
+ * re-establish and deliver the updates it missed.
+ *
+ * Best-effort, reentrancy-guarded, and rate-limited (`minIntervalMs`) so
  * overlapping triggers (e.g. `visibilitychange` and `online` firing together)
- * don't interleave the disable/enable pair. Callers gate this on observed
- * staleness so a healthy connection is never cycled.
+ * don't stack up redundant cycles.
  */
-export async function forceResync(reason = "manual"): Promise<void> {
+export async function forceResync(reason = "manual", minIntervalMs = 0): Promise<void> {
   if (resyncing) {
     logConn("resync", `skip (already running) reason=${reason}`);
     return;
   }
+  if (minIntervalMs && Date.now() - lastResyncAt < minIntervalMs) {
+    logConn("resync", `skip (rate-limited) reason=${reason}`);
+    return;
+  }
   resyncing = true;
+  lastResyncAt = Date.now();
   logConn("resync", `start reason=${reason}`);
   try {
     await disableNetwork(db);
