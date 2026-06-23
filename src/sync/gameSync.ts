@@ -115,16 +115,25 @@ export async function commitTurn(
   await clearDraft(id);
 }
 
+/**
+ * `fromCache` reports whether this snapshot was served from the local cache
+ * (i.e. we're not currently synced with the server) — a real connection signal
+ * we use to drive the offline indicator and to gate reconnection, rather than
+ * guessing from tab-visibility timing. Needs `includeMetadataChanges` so a pure
+ * online↔offline transition (no document change) still fires the callback.
+ */
 export function subscribeGame(
   id: string,
-  onChange: (state: GameState | null) => void,
+  onChange: (state: GameState | null, fromCache: boolean) => void,
   onError?: (err: Error) => void,
 ): () => void {
   return onSnapshot(
     gameRef(id),
+    { includeMetadataChanges: true },
     (snap) => {
-      if (!snap.exists()) return onChange(null);
-      onChange(fromStored(snap.data() as StoredGame));
+      const fromCache = snap.metadata.fromCache;
+      if (!snap.exists()) return onChange(null, fromCache);
+      onChange(fromStored(snap.data() as StoredGame), fromCache);
     },
     (err) => onError?.(err),
   );

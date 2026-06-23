@@ -12,10 +12,13 @@ export function GameView({
   game,
   me,
   onLeave,
+  stale,
 }: {
   game: GameState;
   me: string;
   onLeave: () => void;
+  /** We're offline / serving cached data — the board may be behind. */
+  stale: boolean;
 }) {
   const index = useMemo(() => buildIndex(game), [game.seed]);
   const handle = useRef<BoardHandle>({ table: game.table, rack: game.hands[me] ?? [] });
@@ -230,6 +233,13 @@ export function GameView({
           </div>
         </div>
       </header>
+
+      {stale && (
+        <div className="offline-banner" role="status">
+          <span className="offline-dot" aria-hidden="true" />
+          Reconnecting… the board may be out of date.
+        </div>
+      )}
 
       {game.status === "finished" && (
         <div className="winner-banner">🎉 {winner ?? "Someone"} wins!</div>

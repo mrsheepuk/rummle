@@ -1,6 +1,7 @@
 import { APP_NAME } from "./constants";
 import { useAuth } from "./ui/useAuth";
 import { useGame } from "./ui/useGame";
+import { useReconnectOnResume } from "./ui/useReconnectOnResume";
 import { useRoute } from "./ui/useRoute";
 import { Home } from "./ui/Home";
 import { Lobby } from "./ui/Lobby";
@@ -13,7 +14,9 @@ export function App() {
   // Only subscribe once signed in: opening the listener before the anonymous
   // auth token exists gets a terminal permission-denied (the read rule requires
   // request.auth), which is what broke arriving via a share link.
-  const { game, loading: gameLoading, error: gameError } = useGame(user ? gameId : null);
+  const { game, loading: gameLoading, error: gameError, stale } = useGame(user ? gameId : null);
+  // Only resync when we can see we're stale; healthy connections stay untouched.
+  useReconnectOnResume(stale);
 
   // Auth is anonymous, so there's nothing for the player to do while it settles
   // — show a bare spinner rather than misleading "signing in" / "not signed in"
@@ -54,7 +57,7 @@ export function App() {
   if (game.status === "lobby") {
     return <Lobby game={game} me={user.uid} onLeave={goHome} />;
   }
-  return <GameView game={game} me={user.uid} onLeave={goHome} />;
+  return <GameView game={game} me={user.uid} onLeave={goHome} stale={stale} />;
 }
 
 function Splash({
