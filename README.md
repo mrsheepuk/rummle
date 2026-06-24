@@ -106,6 +106,10 @@ workflows, so only two repository secrets are needed.
    console: Project settings → Your apps → SDK config):
    `VITE_FIREBASE_API_KEY` and `VITE_FIREBASE_APP_ID`.
 4. Deploy the security rules once: `firebase deploy --only firestore:rules --project prod`.
+5. _(Optional)_ For visitor stats, create a free **Cloudflare Web Analytics**
+   site (cookieless — no consent banner needed) and add its token as the
+   `VITE_CF_ANALYTICS_TOKEN` repository secret. The beacon then loads on the
+   live channel only; leave the secret unset to disable it.
 
 Until the secrets exist the two Firebase workflows fail (expected); the
 `ci.yml` check passes regardless. If you rename the project, update the
