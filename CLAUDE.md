@@ -1,14 +1,18 @@
 # CLAUDE.md
 
 Orientation for working on **Rummle** — a web-based, real-time multiplayer
-Rummikub-like game. Read this first; it captures decisions and gotchas that
-aren't obvious from the code.
+tile-game platform. It hosts two games: **Numbers** (a Rummikub-like game, the
+original) and **Words** (a Scrabble-like game). Read this first; it captures
+decisions and gotchas that aren't obvious from the code.
 
 ## What this is
 
 - Stack: **React 18 + TypeScript + Vite**, **@dnd-kit** for drag & drop,
   **Firebase** (Anonymous Auth + Firestore) for realtime sync, **Vitest** tests.
-- Real-time, 2–4 players, anonymous join via a 4-letter share code.
+- Real-time, 2–4 players, anonymous join via a 5-letter share code.
+- Two games share one platform. Player-facing names are **Numbers** and
+  **Words** (`GAME_LABELS`); internally the number game's `gameType` is
+  `"rummle"` (its files still live under `src/game` / `src/state`).
 
 ## Architecture (important)
 
@@ -37,6 +41,70 @@ stays unit-tested and could move server-side later:
 
 Data flow: UI calls `sync/gameSync` → runs a `state/engine` pure function inside
 a Firestore transaction → `onSnapshot` pushes new state back to all clients.
+
+### Multi-game platform (POC)
+
+The codebase now hosts **more than one game**. The game-agnostic machinery was
+lifted into a thin platform layer so a second game (the Scrabble-like **Words**
+game, in `src/games/words/`) could ride it. (Player-facing labels are **Numbers**
+and **Words**; the original game's internal `gameType` stays `"rummle"`.)
+
+- `src/platform/` — the shared, game-neutral layer.
+  - `model.ts` the `BaseGameState` *envelope* (id, `gameType` discriminant,
+    status, players, turnOrder, currentTurn, seed, winner) + generic lobby
+    helpers (`seatPlayer`, `currentPlayerId`, `nextTurn`). Each game extends the
+    envelope with its own payload.
+  - `firestoreSync.ts` the transaction/subscription plumbing every game reuses
+    (`createGameDoc`/`mutateGame`/`subscribeGameDoc`/`subscribeMyGames`/
+    `joinGameDoc`/`ensureSignedIn`), parameterised by a per-game `Codec` (the
+    only game-specific bit: how state reshapes into a storable doc).
+- `src/games/words/` — the second game as a self-contained module: `types.ts`
+  (letter set, premiums), `tiles.ts` (100-tile bag), `model.ts`
+  (`WordsGameState`), `engine.ts` (pure rules), `sync.ts` (codec + actions),
+  `ui/` (`WordsGameView`, `WordsBoard`, `LetterTile`).
+- `src/games/registry.ts` — the one place that knows *every* game type. It
+  composes the two games for the operations done before you know the type:
+  `subscribeAnyGame` (dispatches codec on stored `gameType`) and `joinAnyGame`
+  (touches only the envelope's player roster, so no codec needed). Creating /
+  turn actions / rendering are dispatched by the caller on `state.gameType`
+  (see `App.tsx`, `Home.tsx`, `Lobby.tsx`).
+
+**Rummle was left in place** (`src/game`, `src/state`, `src/sync/gameSync.ts`)
+rather than relocated under `games/rummle/` — that move is the obvious follow-up,
+kept out of the POC to keep its diff reviewable. Rummle now extends
+`BaseGameState` and rides the platform helpers; its `gameSync.ts` is just a codec
+(meld-table reshape) + actions + the live draft.
+
+**Words specifics / scope.** Standard English distribution (100 tiles, 2
+blanks = the joker analog), 15×15 board with standard premium squares, rack of 7,
+scoring with letter/word premiums + the 50-pt bingo, exchange/pass, classic
+end-of-game rack adjustment. **No dictionary — self-policing** (deliberate POC
+choice, like Rummle's loose mid-turn rules): the engine enforces geometry
+(single line, gap-free, connected, opening play crosses the centre) and tile
+conservation, but never checks that words are real. A dictionary (client DAWG or
+a Cloud-Function validator — the latter also fixes cheat-safety) is the obvious
+next step. The board is stored as a **flat list of `{r,c,tileId,letter}`
+placements**, which both sidesteps the no-nested-arrays rule a 2-D grid would hit
+and is denser. UI is **drag-and-drop** (`WordsBoard`). The board sits in a
+scrollable "slippy" viewport with a **Fit/Zoom toggle** (game bar, 🔍 / ⛶).
+Defaults to Fit (shrinks `--wcell` so the whole 15×15 lands in the viewport);
+toggling to zoom gives a **square** window of 40px cells you pan around (side
+`--sq`, re-centred on entering zoom). The **rack** is a single row of square slots
+(`--wtile`, sized to fit one row across the width — no horizontal scroll on a
+phone) reusing Rummle's exact slot mechanics — `insertAt`/`reconcileSlots`/
+`loadSlots` were extracted to `src/ui/rackSlots.ts` and are shared by both boards
+(only the layout differs: Rummle wraps a multi-row grid via `slotCountFor`; Words
+is a fixed single row). Board cells use `--wcell`, rack tiles `--wtile`, so the
+two scale independently. Exchange is a **drag-to-exchange tray** below the rack. Both
+scroll surfaces (board viewport + rack) show a **scroll-aware edge shadow** — a
+soft dark gradient overlay (`.wedges`) painted only on edges that can still
+scroll, so the surface looks like it slips under the frame; widths are driven
+per-edge by the shared `src/ui/useScrollEdges.ts` hook (native scrollbars are
+hidden). **Live-draft spectating** mirrors Numbers: the active player publishes
+their working placements to `games/{id}/draft/current` (throttled, stamped with
+`turn`, cleared on commit/exchange/pass); spectators render them read-only with a
+dashed ring + fade-in (`.wtile-draft`). The flat placement list is Firestore-safe
+as-is, so there's no reshape, and the member-only `draft` rule is reused.
 
 ## Gotchas / decisions
 
@@ -99,7 +167,7 @@ a Firestore transaction → `onSnapshot` pushes new state back to all clients.
 
 ```bash
 npm run dev:all     # emulators + Vite together (main dev loop)
-npm test            # Vitest (engine + state); 40 tests
+npm test            # Vitest (Numbers + Words engines + state); 58 tests
 npm run typecheck   # tsc -b, must stay clean
 npm run build       # production build
 node scripts/smoke.mjs   # end-to-end sync test (needs emulators running)

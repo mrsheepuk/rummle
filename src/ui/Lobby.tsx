@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { beginGame } from "../sync/gameSync";
-import { MAX_PLAYERS, MIN_PLAYERS, type GameState } from "../state/model";
+import { beginWordsGame } from "../games/words/sync";
+import { GAME_LABELS, MAX_PLAYERS, MIN_PLAYERS, type BaseGameState } from "../platform/model";
 
 export function Lobby({
   game,
   me,
   onLeave,
 }: {
-  game: GameState;
+  game: BaseGameState;
   me: string;
   onLeave: () => void;
 }) {
@@ -26,7 +27,8 @@ export function Lobby({
     setBusy(true);
     setError(null);
     try {
-      await beginGame(game.id, { allowSolo: testMode });
+      const begin = game.gameType === "words" ? beginWordsGame : beginGame;
+      await begin(game.id, { allowSolo: testMode });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start game");
     } finally {
@@ -48,7 +50,7 @@ export function Lobby({
   return (
     <div className="lobby">
       <div className="card">
-        <h2>Game lobby</h2>
+        <h2>{GAME_LABELS[game.gameType]} lobby</h2>
 
         <div className="code-display">
           <span className="code-label">Share code</span>

@@ -1124,3 +1124,274 @@ input:focus {
     font-size: 2.1rem;
   }
 }
+
+/* ============================================================
+   Words — the platform's second game. Reuses the shared
+   game-bar / action-bar / chip styles; everything below is the
+   board grid, letter tiles and rack specific to the word game.
+   ============================================================ */
+
+/* Home: two create buttons side by side, plus the my-games type chip. */
+.create-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.create-row .btn-primary {
+  flex: 1 1 0;
+  min-width: 9rem;
+}
+.btn-words {
+  background: var(--green);
+}
+.game-card-type {
+  margin-left: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Two tile sizes:
+   --wtile  the rack tile — sized to fit one row (RACK_SIZE + 2 = 9 slots)
+            across the screen width without scrolling, capped at 40px.
+   --wcell  the board cell — a comfortable fixed 40px when zoomed in; in "fit"
+            mode it shrinks so the whole 15×15 board lands in the viewport. */
+.wgame {
+  --wtile: clamp(28px, calc((100vw - 2.5rem) / 9 - 4px), 40px);
+  --wcell: 40px;
+  /* Side of the square zoom window: the lesser of the (padded) container width,
+     a slice of the viewport height, and a sensible cap — so it's always square
+     and never overflows the 900px-max .game column. */
+  --sq: min(100vw - 1.5rem, 72vh, 600px);
+}
+.wgame.fit {
+  --wcell: clamp(14px, min(calc((100vw - 3.5rem) / 15), calc(44vh / 15)), 40px);
+}
+
+/* Slippy board: the 15×15 grid lives in a scrollable viewport so you can pan
+   around it (auto-centred on load) while the rack stays in view below. */
+/* The board frame: wraps the viewport tightly (so the edge-shadow overlay lines
+   up) and centres it. */
+.wboard-frame {
+  position: relative;
+  max-width: 100%;
+  margin: 0.5rem auto;
+  --fade-size: 16px;
+}
+.wgame.fit .wboard-frame { width: fit-content; }
+.wgame:not(.fit) .wboard-frame { width: var(--sq); }
+
+.wboard-viewport {
+  overflow: auto;
+  padding: 6px;
+  background: var(--felt-lo);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.25);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  /* Fades are the only overflow cue for now — hide the native scrollbars. */
+  scrollbar-width: none;
+}
+/* Zoomed: a square window onto the board you pan around. */
+.wgame:not(.fit) .wboard-viewport {
+  width: var(--sq);
+  height: var(--sq);
+}
+/* Fit: wrap the shrunk-to-fit board; nothing to scroll. */
+.wgame.fit .wboard-viewport {
+  width: max-content;
+  max-width: 100%;
+  max-height: 50vh;
+}
+.wboard-viewport::-webkit-scrollbar { display: none; }
+
+/* Scroll-aware edge shadow: a soft dark gradient painted only on edges that can
+   still scroll (widths set per-edge by the component via --fade-*), so the
+   surface looks like it slips under the frame. Non-interactive overlay. */
+.wedges {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 8px;
+  --edge: rgba(18, 12, 5, 0.55);
+  --fade-t: 0px;
+  --fade-r: 0px;
+  --fade-b: 0px;
+  --fade-l: 0px;
+  background:
+    linear-gradient(to right, var(--edge), transparent) left / var(--fade-l) 100% no-repeat,
+    linear-gradient(to left, var(--edge), transparent) right / var(--fade-r) 100% no-repeat,
+    linear-gradient(to bottom, var(--edge), transparent) top / 100% var(--fade-t) no-repeat,
+    linear-gradient(to top, var(--edge), transparent) bottom / 100% var(--fade-b) no-repeat;
+}
+.wboard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: max-content;
+}
+.wrow {
+  display: flex;
+  gap: 2px;
+}
+.wcell {
+  position: relative;
+  width: var(--wcell);
+  height: var(--wcell);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background: var(--felt-hi);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: calc(var(--wcell) * 0.28);
+  font-weight: 600;
+  user-select: none;
+}
+/* A tile on the board sizes to its cell (so it tracks the fit/zoom size), unlike
+   a rack tile which uses --wtile. */
+.wcell .wtile {
+  width: var(--wcell);
+  height: var(--wcell);
+}
+.wcell .wtile-face { font-size: calc(var(--wcell) * 0.5); }
+.wcell .wtile-value { font-size: calc(var(--wcell) * 0.26); }
+.wcell-dl { background: #2f6f8f; }
+.wcell-tl { background: #1f5673; }
+.wcell-dw { background: #9e5a3b; }
+.wcell-tw { background: #8a2f25; }
+.wcell-center { background: #9e5a3b; }
+.wcell-premium { opacity: 0.85; color: #fff; }
+.wcell-over { box-shadow: inset 0 0 0 2px var(--accent); z-index: 1; }
+
+/* The one canonical tile — square, aged ivory — used on the rack AND the board. */
+.wtile {
+  position: relative;
+  width: var(--wtile);
+  height: var(--wtile);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--tile-bg-1), var(--tile-bg-3));
+  /* The tile face is aged ivory in both themes, so the letter stays a fixed dark
+     ink rather than var(--text) (which goes light in dark mode → invisible). */
+  color: #2f291f;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 252, 240, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.wtile-fixed {
+  /* a committed tile — locked, flatter than a tile in hand */
+  cursor: default;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+  background: linear-gradient(180deg, var(--tile-bg-2), var(--tile-bg-3));
+}
+.wtile-staged { outline: 2px solid var(--accent); }
+/* An opponent's in-progress (spectated) tile: dashed ring signals "tentative",
+   and it pops in as it streams over. */
+.wtile-draft {
+  outline: 2px dashed var(--accent);
+  animation: wtile-pop 180ms ease-out;
+}
+@keyframes wtile-pop {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wtile-draft { animation: none; }
+}
+.wtile-face {
+  font-size: calc(var(--wtile) * 0.5);
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.wtile-value {
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  font-size: calc(var(--wtile) * 0.26);
+  color: rgba(47, 41, 31, 0.55);
+}
+.wtile-blank .wtile-face { color: var(--accent); }
+
+/* The rack: a single row of square slots (Rummle's exact slot mechanics) with a
+   few spare slots for elbow room; scrolls horizontally if it overflows. The
+   `safe` keyword keeps it centred when it fits but never clips the first tiles
+   when it doesn't. */
+/* The rack frame: sizes/centres the row and hosts its (horizontal) edge shadow. */
+.wrack-frame {
+  position: relative;
+  width: max-content;
+  max-width: 100%;
+  margin: 0.5rem auto 0;
+  --fade-size: 13px;
+}
+.wrack-row {
+  display: flex;
+  gap: 4px;
+  justify-content: safe center;
+  padding: 8px;
+  background: var(--tray);
+  border-radius: 8px;
+  overflow-x: auto;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.5);
+  scrollbar-width: none;
+}
+.wrack-row::-webkit-scrollbar { display: none; }
+.wrack-slot {
+  flex: 0 0 var(--wtile);
+  width: var(--wtile);
+  height: var(--wtile);
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+.wrack-slot.filled { background: transparent; box-shadow: none; }
+.wrack-slot.over { box-shadow: inset 0 0 0 2px var(--accent); background: rgba(210, 155, 50, 0.14); }
+
+/* Drag-to-exchange tray below the rack. */
+.wexchange {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(var(--wtile) * 0.8);
+  margin: 6px auto 0;
+  padding: 6px 10px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.06);
+}
+.wexchange.over {
+  border-color: var(--accent);
+  background: rgba(210, 155, 50, 0.14);
+}
+.wexchange.has-tiles { border-style: solid; }
+.wexchange-hint {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* Live score / exchange preview under the rack. */
+.wpreview {
+  text-align: center;
+  font-weight: 700;
+  color: var(--green);
+  margin: 0.2rem 0;
+}
+.wpreview.is-bad {
+  color: var(--danger);
+  font-weight: 500;
+}
+.wpreview.is-muted {
+  color: var(--muted);
+  font-weight: 500;
+}

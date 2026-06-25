@@ -61,7 +61,10 @@ function GameCard({
         onClick={() => onOpen(game.id)}
       >
         <span className="game-card-main">
-          <span className="game-card-code">{game.id}</span>
+          <span className="game-card-code">
+            {game.id}
+            <span className="game-card-type">{game.gameLabel}</span>
+          </span>
           <span className="game-card-players">{game.playerNames.join(", ")}</span>
         </span>
         <span className="game-card-meta">
