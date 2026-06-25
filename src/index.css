@@ -1273,7 +1273,9 @@ input:focus {
   height: var(--wtile);
   border-radius: 4px;
   background: linear-gradient(180deg, var(--tile-bg-1), var(--tile-bg-3));
-  color: var(--text);
+  /* The tile face is aged ivory in both themes, so the letter stays a fixed dark
+     ink rather than var(--text) (which goes light in dark mode → invisible). */
+  color: #2f291f;
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 252, 240, 0.6);
   display: flex;
   align-items: center;
@@ -1313,7 +1315,7 @@ input:focus {
   right: 3px;
   bottom: 1px;
   font-size: calc(var(--wtile) * 0.26);
-  color: var(--muted);
+  color: rgba(47, 41, 31, 0.55);
 }
 .wtile-blank .wtile-face { color: var(--accent); }
 
