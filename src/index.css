@@ -1161,32 +1161,29 @@ input:focus {
 .wgame {
   --wtile: clamp(28px, calc((100vw - 2.5rem) / 9 - 4px), 40px);
   --wcell: 40px;
+  /* Side of the square zoom window: the lesser of the (padded) container width,
+     a slice of the viewport height, and a sensible cap — so it's always square
+     and never overflows the 900px-max .game column. */
+  --sq: min(100vw - 1.5rem, 72vh, 600px);
 }
 .wgame.fit {
   --wcell: clamp(14px, min(calc((100vw - 3.5rem) / 15), calc(44vh / 15)), 40px);
 }
 
-/* The Fit/Zoom toggle in the game bar. */
-.btn-zoom {
-  height: 2.4rem;
-  padding: 0 0.7rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
 /* Slippy board: the 15×15 grid lives in a scrollable viewport so you can pan
    around it (auto-centred on load) while the rack stays in view below. */
-/* The board frame: sizes/centres the viewport and hosts the edge-shadow overlay. */
+/* The board frame: wraps the viewport tightly (so the edge-shadow overlay lines
+   up) and centres it. */
 .wboard-frame {
   position: relative;
-  width: max-content;
   max-width: 100%;
   margin: 0.5rem auto;
   --fade-size: 16px;
 }
+.wgame.fit .wboard-frame { width: fit-content; }
+.wgame:not(.fit) .wboard-frame { width: var(--sq); }
+
 .wboard-viewport {
-  width: 100%;
-  max-height: 50vh;
   overflow: auto;
   padding: 6px;
   background: var(--felt-lo);
@@ -1196,6 +1193,17 @@ input:focus {
   overscroll-behavior: contain;
   /* Fades are the only overflow cue for now — hide the native scrollbars. */
   scrollbar-width: none;
+}
+/* Zoomed: a square window onto the board you pan around. */
+.wgame:not(.fit) .wboard-viewport {
+  width: var(--sq);
+  height: var(--sq);
+}
+/* Fit: wrap the shrunk-to-fit board; nothing to scroll. */
+.wgame.fit .wboard-viewport {
+  width: max-content;
+  max-width: 100%;
+  max-height: 50vh;
 }
 .wboard-viewport::-webkit-scrollbar { display: none; }
 

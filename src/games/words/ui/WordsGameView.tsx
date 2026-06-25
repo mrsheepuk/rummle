@@ -24,16 +24,13 @@ export function WordsGameView({
   const [exchange, setExchange] = useState(handle.current.exchange);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // View defaults to whole-board off-turn and zoomed-in on your turn; a manual
-  // toggle overrides that until the next turn boundary, when it re-syncs.
-  const [viewOverride, setViewOverride] = useState<null | "fit" | "zoom">(null);
+  // Board view: fit-whole-board by default; the game-bar button toggles to the
+  // zoomed-in slippy view.
+  const [zoomed, setZoomed] = useState(false);
 
   const activeId = currentPlayerId(game);
   const myTurn = activeId === me && game.status === "playing";
   const players = Object.values(game.players).sort((a, b) => a.seat - b.seat);
-  const zoomed = (viewOverride ?? (myTurn ? "zoom" : "fit")) === "zoom";
-
-  useEffect(() => setViewOverride(null), [game.currentTurn]);
 
   // Turn chime / win flourish, matching Rummle's GameView.
   const prevTurn = useRef(game.currentTurn);
@@ -99,12 +96,12 @@ export function WordsGameView({
         <div className="game-meta">
           <span className="pool-count">Bag {game.bag.length}</span>
           <button
-            className="btn btn-zoom"
+            className="btn btn-icon"
             aria-label={zoomed ? "Fit whole board" : "Zoom in"}
             title={zoomed ? "Fit whole board" : "Zoom in"}
-            onClick={() => setViewOverride(zoomed ? "fit" : "zoom")}
+            onClick={() => setZoomed((z) => !z)}
           >
-            {zoomed ? "Fit" : "Zoom"}
+            {zoomed ? "⛶" : "🔍"}
           </button>
           <button className="btn btn-icon" aria-label="Home" onClick={onLeave}>
             ⎋

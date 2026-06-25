@@ -81,11 +81,10 @@ a Cloud-Function validator — the latter also fixes cheat-safety) is the obviou
 next step. The board is stored as a **flat list of `{r,c,tileId,letter}`
 placements**, which both sidesteps the no-nested-arrays rule a 2-D grid would hit
 and is denser. UI is **drag-and-drop** (`WordsBoard`). The board sits in a
-scrollable "slippy" viewport with a **Fit/Zoom toggle** (game bar): zoomed-in is
-40px cells you pan around (re-centred on entering zoom); Fit shrinks `--wcell` so
-the whole 15×15 lands in the viewport. The view auto-derives from whose turn it
-is (off-turn → Fit for an overview, your turn → Zoom to place), with a manual
-override that resets each turn. The **rack** is a single row of square slots
+scrollable "slippy" viewport with a **Fit/Zoom toggle** (game bar, 🔍 / ⛶).
+Defaults to Fit (shrinks `--wcell` so the whole 15×15 lands in the viewport);
+toggling to zoom gives a **square** window of 40px cells you pan around (side
+`--sq`, re-centred on entering zoom). The **rack** is a single row of square slots
 (`--wtile`, sized to fit one row across the width — no horizontal scroll on a
 phone) reusing Rummle's exact slot mechanics — `insertAt`/`reconcileSlots`/
 `loadSlots` were extracted to `src/ui/rackSlots.ts` and are shared by both boards
