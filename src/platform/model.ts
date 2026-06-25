@@ -51,8 +51,8 @@ export const MIN_PLAYERS = 2;
 
 /** Display label for a game type (lobby, my-games badges, headers). */
 export const GAME_LABELS: Record<GameType, string> = {
-  rummle: "Rummle",
-  words: "Word Tiles",
+  rummle: "Numbers",
+  words: "Words",
 };
 
 export class GameError extends Error {}

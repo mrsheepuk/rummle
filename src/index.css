@@ -1126,7 +1126,7 @@ input:focus {
 }
 
 /* ============================================================
-   Word Tiles — the platform's second game. Reuses the shared
+   Words — the platform's second game. Reuses the shared
    game-bar / action-bar / chip styles; everything below is the
    board grid, letter tiles and rack specific to the word game.
    ============================================================ */

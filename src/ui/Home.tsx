@@ -65,12 +65,14 @@ export function Home({ uid, onEnterGame }: { uid: string; onEnterGame: (id: stri
           />
         </label>
 
+        <div className="divider">start a new game</div>
+
         <div className="create-row">
           <button className="btn btn-primary" disabled={busy} onClick={() => handleCreate("rummle")}>
-            New {GAME_LABELS.rummle} game
+            {GAME_LABELS.rummle}
           </button>
           <button className="btn btn-primary btn-words" disabled={busy} onClick={() => handleCreate("words")}>
-            New {GAME_LABELS.words} game
+            {GAME_LABELS.words}
           </button>
         </div>
 

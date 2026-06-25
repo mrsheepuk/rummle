@@ -1,14 +1,18 @@
 # CLAUDE.md
 
 Orientation for working on **Rummle** — a web-based, real-time multiplayer
-Rummikub-like game. Read this first; it captures decisions and gotchas that
-aren't obvious from the code.
+tile-game platform. It hosts two games: **Numbers** (a Rummikub-like game, the
+original) and **Words** (a Scrabble-like game). Read this first; it captures
+decisions and gotchas that aren't obvious from the code.
 
 ## What this is
 
 - Stack: **React 18 + TypeScript + Vite**, **@dnd-kit** for drag & drop,
   **Firebase** (Anonymous Auth + Firestore) for realtime sync, **Vitest** tests.
-- Real-time, 2–4 players, anonymous join via a 4-letter share code.
+- Real-time, 2–4 players, anonymous join via a 5-letter share code.
+- Two games share one platform. Player-facing names are **Numbers** and
+  **Words** (`GAME_LABELS`); internally the number game's `gameType` is
+  `"rummle"` (its files still live under `src/game` / `src/state`).
 
 ## Architecture (important)
 
@@ -41,8 +45,9 @@ a Firestore transaction → `onSnapshot` pushes new state back to all clients.
 ### Multi-game platform (POC)
 
 The codebase now hosts **more than one game**. The game-agnostic machinery was
-lifted into a thin platform layer so a second game (a Scrabble-like **Word
-Tiles**, in `src/games/words/`) could ride it:
+lifted into a thin platform layer so a second game (the Scrabble-like **Words**
+game, in `src/games/words/`) could ride it. (Player-facing labels are **Numbers**
+and **Words**; the original game's internal `gameType` stays `"rummle"`.)
 
 - `src/platform/` — the shared, game-neutral layer.
   - `model.ts` the `BaseGameState` *envelope* (id, `gameType` discriminant,
@@ -70,7 +75,7 @@ kept out of the POC to keep its diff reviewable. Rummle now extends
 `BaseGameState` and rides the platform helpers; its `gameSync.ts` is just a codec
 (meld-table reshape) + actions + the live draft.
 
-**Word Tiles specifics / scope.** Standard English distribution (100 tiles, 2
+**Words specifics / scope.** Standard English distribution (100 tiles, 2
 blanks = the joker analog), 15×15 board with standard premium squares, rack of 7,
 scoring with letter/word premiums + the 50-pt bingo, exchange/pass, classic
 end-of-game rack adjustment. **No dictionary — self-policing** (deliberate POC
@@ -158,7 +163,7 @@ hidden). Live-draft spectating is still a follow-up.
 
 ```bash
 npm run dev:all     # emulators + Vite together (main dev loop)
-npm test            # Vitest (engine + state); 40 tests
+npm test            # Vitest (Numbers + Words engines + state); 58 tests
 npm run typecheck   # tsc -b, must stay clean
 npm run build       # production build
 node scripts/smoke.mjs   # end-to-end sync test (needs emulators running)

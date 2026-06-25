@@ -1,31 +1,69 @@
 # Rummle
 
-A free, open-source, web-based, real-time **multiplayer Rummy-based tile game**. Make your runs and groups, lay down your opening 30, empty your rack, win.
+A free, open-source, web-based, real-time **multiplayer tile-game platform**.
+It hosts two games that share the same lobby, identity and realtime sync:
+
+- **Numbers** — a Rummikub-like game. Make your runs and groups, lay down your
+  opening 30, empty your rack, win.
+- **Words** — a Scrabble-like game. Build words on a 15×15 board, score with
+  premium squares and the 50-point bingo. _Self-policing: no dictionary check
+  (yet) — the engine enforces geometry and tile conservation, players police the
+  words._
+
+> The platform is named **Rummle**; the two games are surfaced to players as
+> **Numbers** and **Words**. Internally the number game keeps the `gameType`
+> id `"rummle"`.
 
 ## Stack
 
 - **React 18 + TypeScript + Vite**
 - **Drag & drop** via [`@dnd-kit`](https://dndkit.com/) (mouse + touch)
 - **Firebase**: Anonymous Auth + Firestore for realtime sync
-- **Vitest** for the rules engine unit tests
+- **Vitest** for the rules-engine unit tests (58 tests)
 
-Everything game-logic related lives in a **pure, framework-free engine**
-(`src/game`, `src/state`) so it is fully unit-tested and could later run on a
-server (e.g. an authoritative Cloud Function) without changes.
+Each game's logic lives in a **pure, framework-free engine** (no React/Firebase
+imports) so it is fully unit-tested and could later run on a server (e.g. an
+authoritative Cloud Function) without changes.
 
-## Project layout
+## Architecture
+
+The game-agnostic machinery (Firestore transactions/subscriptions, the
+lobby/identity envelope, the "your games" query) lives in a thin **platform**
+layer that both games ride. Each game is a self-contained module that supplies
+its own rules engine and a tiny `Codec` (how its state reshapes into a stored
+document).
 
 ```
 src/
-  game/        Pure rules engine (no React/Firebase)
-    tiles.ts     106-tile deck, seedable shuffle
-    melds.ts     group/run validation incl. jokers
-    rules.ts     turn-commit validation (conservation, opening 30, win)
-    rng.ts       seedable PRNG
-  state/       Game state model + turn engine (deal/draw/commit)
-  sync/        Firestore wiring (the only Firebase-aware module)
-  ui/          React components + hooks (Home, Lobby, GameView, Board)
+  platform/      Game-neutral shared layer
+    model.ts       BaseGameState envelope + gameType + generic lobby helpers
+    firestoreSync.ts  transactions/subscriptions/join, parameterised by a Codec
+  games/
+    registry.ts    The one place that knows every game type
+                   (subscribeAnyGame / joinAnyGame — dispatch by gameType)
+    words/         The Words game, self-contained
+      types.ts       letter set, premium squares
+      tiles.ts       100-tile bag (2 blanks), seedable shuffle
+      model.ts       WordsGameState
+      engine.ts      pure rules (placement geometry, scoring, exchange/pass)
+      sync.ts        codec + turn actions
+      ui/            WordsGameView, WordsBoard, LetterTile
+
+  # Numbers (the original game) — left in place rather than relocated under
+  # games/numbers/ to keep the platform-extraction diff reviewable:
+  game/          Pure rules engine (tiles, melds, opening-30/win validation, rng)
+  state/         GameState model + turn engine (deal/draw/commit)
+  sync/          gameSync.ts — Numbers' codec + actions + live-draft
+
+  ui/            Shared React shell + Numbers UI: App/router, Home, Lobby,
+                 JoinPrompt, MyGames, GameView, Board, rackSlots, useScrollEdges…
 ```
+
+Data flow (both games): UI → a game's `sync` module runs a pure engine function
+inside a Firestore **transaction** → `onSnapshot` pushes the new state back to
+every client. Joining and subscribing-by-code happen through `games/registry.ts`
+before the game type is known (joining only touches the shared player roster, so
+it needs no game-specific codec).
 
 ## Getting started
 
@@ -35,8 +73,9 @@ cp .env.example .env        # defaults already target the local emulator
 npm run dev:all             # starts the Firebase emulators + Vite together
 ```
 
-Then open http://localhost:5173. Create a game, copy the share link, and open
-it in a second browser/tab to play as another anonymous player.
+Then open http://localhost:5173. Create a **Numbers** or **Words** game, copy the
+share link, and open it in a second browser/tab to play as another anonymous
+player.
 
 Useful scripts:
 
@@ -45,28 +84,46 @@ Useful scripts:
 | `npm run dev`      | Vite dev server only                          |
 | `npm run emulators`| Firebase Auth + Firestore emulators           |
 | `npm run dev:all`  | Both of the above together                    |
-| `npm test`         | Run the engine unit tests                     |
+| `npm test`         | Run the engine unit tests (58)                |
 | `npm run typecheck`| Type-check the whole project                  |
 | `npm run build`    | Production build                              |
 | `node scripts/smoke.mjs` | End-to-end sync smoke test (emulator must be running) |
 
 ## How a game flows
 
-1. **Home** — pick a display name, then create a game or join with a 4-letter code.
+1. **Home** — pick a display name, then start a **Numbers** or **Words** game, or
+   join either with a 5-letter code. "Your games" lists everything you're in
+   (across both games), with a turn badge.
 2. **Lobby** — share the code/link; the host starts once 2–4 players are in.
-3. **Play** — on your turn, drag tiles from your rack onto the table to form
-   valid runs/groups, then **Commit**, or **Draw & pass**. Your first play must
-   total at least 30 points. Empty your rack to win.
+3. **Play** — take your turn (details per game below).
 
-## Rules implemented
+### Numbers (Rummikub-like)
 
-- 4 colors × 1–13 × 2 copies + 2 jokers = **106 tiles**
-- **Groups** (same number, distinct colors, 3–4 tiles) and **runs**
-  (consecutive, same color, 3+), with **joker** substitution
-- **Opening meld** must be worth ≥ 30 points from your own tiles, and you can't
+- 4 colours × 1–13 × 2 copies + 2 jokers = **106 tiles**
+- **Groups** (same number, distinct colours, 3–4) and **runs** (consecutive,
+  same colour, 3+), with **joker** substitution
+- **Opening meld** must total ≥ 30 points from your own tiles; you can't
   rearrange the shared table until you've opened
-- Tile **conservation** and one-way hands enforced on every commit
-- **Win** detection when a rack is emptied with a valid table
+- Tile **conservation** and one-way hands enforced on every commit; **win** when
+  your rack is emptied with a valid table
+- Drag tiles from your rack to the table, then **Commit**, or **Draw & pass**.
+  Opponents' in-progress turns stream in via a quasi-real-time live draft.
+
+### Words (Scrabble-like)
+
+- Standard English distribution: **100 tiles** (incl. **2 blanks** = the joker
+  analog), rack of 7, 15×15 board with standard premium squares
+- Drag tiles onto the board; the first play must cross the centre star. Scoring
+  applies letter/word premiums (new tiles only) plus the **50-point bingo** for
+  using all seven; blanks score 0
+- **Exchange** (drag tiles to the exchange tray) or **Pass**; classic
+  end-of-game rack-value adjustment
+- **Self-policing — no dictionary.** The engine enforces geometry (single line,
+  gap-free, connected, centre-opening) and tile conservation, but does **not**
+  check that words are real. A dictionary (client DAWG or a Cloud-Function
+  validator) is the obvious next step.
+- Board view has a **Fit / Zoom** toggle (🔍 / ⛶): fit the whole board, or zoom
+  into a square slippy viewport you pan around.
 
 ## Connecting a real Firebase project
 
@@ -117,13 +174,17 @@ workflows.
 For now the full game state — including every player's rack — lives in one
 Firestore document readable by all players, so a determined player could read
 opponents' tiles from the database. This is an accepted trade-off for casual
-play. The data is modelled (per-uid `hands` map) so hands can later move into a
-private, Cloud-Function-owned subcollection **without changing the UI or the
-sync interface**.
+play. The data is modelled (per-uid `hands`/`racks` map) so hands can later move
+into a private, Cloud-Function-owned subcollection **without changing the UI or
+the sync interface** (and the same move would let a server-side dictionary
+validate Words moves authoritatively).
 
 ## Roadmap ideas
 
+- A **dictionary** for Words (client DAWG, or a Cloud-Function validator that
+  also fixes cheat-safety)
+- Relocate Numbers under `src/games/numbers/` to match the platform structure
+- Live-draft spectating for Words (Numbers already has it)
 - Move hidden hands server-side (authoritative Cloud Function) for real cheat safety
 - Reconnect/spectator handling, turn timers
-- Sound, animations, themes; PWA install
 - Game history / stats (would pair well with optional Google sign-in)
