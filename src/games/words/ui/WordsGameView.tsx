@@ -101,7 +101,7 @@ export function WordsGameView({
             title={zoomed ? "Fit whole board" : "Zoom in"}
             onClick={() => setZoomed((z) => !z)}
           >
-            {zoomed ? "⛶" : "🔍"}
+            {zoomed ? <FitIcon /> : <ZoomIcon />}
           </button>
           <button className="btn btn-icon" aria-label="Home" onClick={onLeave}>
             ⎋
@@ -173,5 +173,39 @@ export function WordsGameView({
         )}
       </footer>
     </div>
+  );
+}
+
+// Line-style icons (stroke = currentColor) so the Zoom/Fit toggle is a matched
+// monochrome pair rather than a colour emoji next to a glyph.
+const ICON_PROPS = {
+  viewBox: "0 0 24 24",
+  width: 20,
+  height: 20,
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  "aria-hidden": true,
+} as const;
+
+function ZoomIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <line x1="15.5" y1="15.5" x2="21" y2="21" />
+    </svg>
+  );
+}
+
+function FitIcon() {
+  return (
+    <svg {...ICON_PROPS}>
+      <path d="M4 9V4h5" />
+      <path d="M20 9V4h-5" />
+      <path d="M4 15v5h5" />
+      <path d="M20 15v5h-5" />
+    </svg>
   );
 }
