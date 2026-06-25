@@ -184,7 +184,6 @@ validate Words moves authoritatively).
 - A **dictionary** for Words (client DAWG, or a Cloud-Function validator that
   also fixes cheat-safety)
 - Relocate Numbers under `src/games/numbers/` to match the platform structure
-- Live-draft spectating for Words (Numbers already has it)
 - Move hidden hands server-side (authoritative Cloud Function) for real cheat safety
 - Reconnect/spectator handling, turn timers
 - Game history / stats (would pair well with optional Google sign-in)

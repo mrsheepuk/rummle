@@ -78,6 +78,7 @@ export function WordsBoard({
   index,
   myTurn,
   zoomed,
+  spectated,
   storageKey,
   resetNonce,
   onChange,
@@ -88,6 +89,8 @@ export function WordsBoard({
   myTurn: boolean;
   /** Zoomed-in (slippy) view vs fit-whole-board; drives re-centring. */
   zoomed: boolean;
+  /** When spectating, the active player's in-progress placements (read-only). */
+  spectated?: Placement[];
   storageKey: string;
   resetNonce: number;
   onChange: (handle: WordsBoardHandle) => void;
@@ -121,6 +124,13 @@ export function WordsBoard({
     for (const p of board) m.set(`${p.r},${p.c}`, p);
     return m;
   }, [boardKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Opponent's in-progress tiles (spectating only), shown read-only.
+  const spectatedMap = useMemo(() => {
+    const m = new Map<string, Placement>();
+    for (const p of spectated ?? []) m.set(`${p.r},${p.c}`, p);
+    return m;
+  }, [spectated]);
 
   // Centre the board viewport whenever we enter the zoomed view (and on mount if
   // it starts zoomed), so the player lands in the middle rather than top-left.
@@ -284,6 +294,7 @@ export function WordsBoard({
                 {Array.from({ length: BOARD_SIZE }, (_, c) => {
                   const fixed = committed.get(`${r},${c}`);
                   const stagedHere = staged.find((p) => p.r === r && p.c === c);
+                  const draftHere = !fixed && !stagedHere ? spectatedMap.get(`${r},${c}`) : undefined;
                   return (
                     <BoardCell
                       key={c}
@@ -291,6 +302,7 @@ export function WordsBoard({
                       c={c}
                       fixed={fixed}
                       staged={stagedHere}
+                      draft={draftHere}
                       index={index}
                       droppable={myTurn && !fixed}
                     />
@@ -329,6 +341,7 @@ function BoardCell({
   c,
   fixed,
   staged,
+  draft,
   index,
   droppable,
 }: {
@@ -336,13 +349,14 @@ function BoardCell({
   c: number;
   fixed: Placement | undefined;
   staged: Placement | undefined;
+  draft: Placement | undefined;
   index: Map<string, LetterTile>;
   droppable: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `cell-${r}-${c}`, disabled: !droppable });
   const premium = premiumAt(r, c);
   const isCenter = r === CENTER && c === CENTER;
-  const occupant = fixed ?? staged;
+  const occupant = fixed ?? staged ?? draft;
   const tile = occupant ? index.get(occupant.tileId) : undefined;
   const cls = [
     "wcell",
@@ -353,17 +367,20 @@ function BoardCell({
     .filter(Boolean)
     .join(" ");
 
+  function content() {
+    if (!occupant || !tile) {
+      return premium ? <span className="wcell-premium">{isCenter ? "★" : PREMIUM_LABEL[premium]}</span> : null;
+    }
+    if (staged) return <DraggableLetter id={occupant.tileId} tile={tile} shown={occupant.letter} variant="staged" />;
+    if (fixed) return <LetterTileView tile={tile} shown={occupant.letter} variant="fixed" />;
+    // Spectated draft tile — read-only, fades in (keyed by tile so it re-animates
+    // when an opponent moves a tile into this cell).
+    return <LetterTileView key={occupant.tileId} tile={tile} shown={occupant.letter} variant="draft" />;
+  }
+
   return (
     <div ref={droppable ? setNodeRef : undefined} className={cls}>
-      {occupant && tile ? (
-        staged ? (
-          <DraggableLetter id={occupant.tileId} tile={tile} shown={occupant.letter} variant="staged" />
-        ) : (
-          <LetterTileView tile={tile} shown={occupant.letter} variant="fixed" />
-        )
-      ) : (
-        premium && <span className="wcell-premium">{isCenter ? "★" : PREMIUM_LABEL[premium]}</span>
-      )}
+      {content()}
     </div>
   );
 }

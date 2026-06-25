@@ -100,7 +100,11 @@ scroll surfaces (board viewport + rack) show a **scroll-aware edge shadow** — 
 soft dark gradient overlay (`.wedges`) painted only on edges that can still
 scroll, so the surface looks like it slips under the frame; widths are driven
 per-edge by the shared `src/ui/useScrollEdges.ts` hook (native scrollbars are
-hidden). Live-draft spectating is still a follow-up.
+hidden). **Live-draft spectating** mirrors Numbers: the active player publishes
+their working placements to `games/{id}/draft/current` (throttled, stamped with
+`turn`, cleared on commit/exchange/pass); spectators render them read-only with a
+dashed ring + fade-in (`.wtile-draft`). The flat placement list is Firestore-safe
+as-is, so there's no reshape, and the member-only `draft` rule is reused.
 
 ## Gotchas / decisions
 

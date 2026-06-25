@@ -11,12 +11,13 @@ export function LetterTile({
   tile,
   /** Effective letter to show (a blank's assigned letter). */
   shown,
-  /** "staged" = placed this turn (accent ring); "fixed" = committed (locked). */
+  /** "staged" = placed this turn (accent ring); "fixed" = committed (locked);
+   *  "draft" = an opponent's in-progress tile we're spectating (fades in). */
   variant,
 }: {
   tile: LetterTileT;
   shown?: string;
-  variant?: "staged" | "fixed";
+  variant?: "staged" | "fixed" | "draft";
 }) {
   const letter = shown ?? tile.letter;
   const cls = ["wtile", tile.isBlank ? "wtile-blank" : "", variant ? `wtile-${variant}` : ""]

@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { playTurnComplete, playWin } from "../../../ui/sounds";
+import { playRemoteTick, playTurnComplete, playWin } from "../../../ui/sounds";
 import { buildIndex, currentPlayerId, scorePlay } from "../engine";
-import { commitWordsPlay, exchangeWordsTiles, passWordsTurn } from "../sync";
+import {
+  commitWordsPlay,
+  exchangeWordsTiles,
+  passWordsTurn,
+  publishWordsDraft,
+  subscribeWordsDraft,
+  type WordsDraft,
+} from "../sync";
 import { GameError } from "../../../platform/model";
-import type { WordsGameState } from "../model";
+import type { Placement, WordsGameState } from "../model";
 import { WordsBoard, type WordsBoardHandle } from "./WordsBoard";
+
+const DRAFT_THROTTLE_MS = 300;
 
 export function WordsGameView({
   game,
@@ -27,10 +36,52 @@ export function WordsGameView({
   // Board view: fit-whole-board by default; the game-bar button toggles to the
   // zoomed-in slippy view.
   const [zoomed, setZoomed] = useState(false);
+  const [draft, setDraft] = useState<WordsDraft | null>(null);
 
   const activeId = currentPlayerId(game);
   const myTurn = activeId === me && game.status === "playing";
   const players = Object.values(game.players).sort((a, b) => a.seat - b.seat);
+
+  // Watch the active player's in-progress turn (quasi-real-time), and mirror it
+  // read-only when it's not our turn and it's for the current turn/player.
+  useEffect(() => subscribeWordsDraft(game.id, setDraft), [game.id]);
+  const spectated =
+    !myTurn && draft && draft.turn === game.currentTurn && draft.uid === activeId ? draft.placements : undefined;
+
+  // Faint tick whenever a spectated move streams in (not on first appearance).
+  const liveKey = spectated ? JSON.stringify(spectated) : null;
+  const prevLiveKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (liveKey !== null && prevLiveKey.current !== null && prevLiveKey.current !== liveKey) playRemoteTick();
+    prevLiveKey.current = liveKey;
+  }, [liveKey]);
+
+  // Throttle draft publishing to keep writes human-paced, skipping unchanged
+  // placements. Mirrors Rummle's GameView.
+  const publish = useRef<{ at: number; timer: ReturnType<typeof setTimeout> | null; last: string }>({
+    at: 0,
+    timer: null,
+    last: "",
+  });
+  function publishLater(placements: Placement[]) {
+    const key = JSON.stringify(placements);
+    if (key === publish.current.last) return;
+    publish.current.last = key;
+    if (publish.current.timer) clearTimeout(publish.current.timer);
+    const fire = () => {
+      publish.current.at = Date.now();
+      publish.current.timer = null;
+      void publishWordsDraft(game.id, game.currentTurn, placements).catch(() => undefined);
+    };
+    const since = Date.now() - publish.current.at;
+    if (since >= DRAFT_THROTTLE_MS) fire();
+    else publish.current.timer = setTimeout(fire, DRAFT_THROTTLE_MS - since);
+  }
+  function cancelPendingPublish() {
+    if (publish.current.timer) clearTimeout(publish.current.timer);
+    publish.current.timer = null;
+  }
+  useEffect(() => cancelPendingPublish, []);
 
   // Turn chime / win flourish, matching Rummle's GameView.
   const prevTurn = useRef(game.currentTurn);
@@ -65,14 +116,21 @@ export function WordsGameView({
     }
   }
 
-  const onCommit = () => run(() => commitWordsPlay(game.id, handle.current.staged));
-  const onPass = () => run(() => passWordsTurn(game.id));
+  const onCommit = () => {
+    cancelPendingPublish();
+    void run(() => commitWordsPlay(game.id, handle.current.staged));
+  };
+  const onPass = () => {
+    cancelPendingPublish();
+    void run(() => passWordsTurn(game.id));
+  };
   const onRecall = () => {
     setError(null);
     setResetNonce((k) => k + 1);
   };
   const onExchange = () => {
     if (handle.current.exchange.length === 0) return setError("Drag tiles into the exchange tray first");
+    cancelPendingPublish();
     void run(() => exchangeWordsTiles(game.id, handle.current.exchange)).then(() => setResetNonce((k) => k + 1));
   };
 
@@ -126,12 +184,14 @@ export function WordsGameView({
         index={index}
         myTurn={myTurn}
         zoomed={zoomed}
+        spectated={spectated}
         storageKey={`words:rack:${game.id}:${me}`}
         resetNonce={resetNonce}
         onChange={(h) => {
           handle.current = h;
           setStaged(h.staged);
           setExchange(h.exchange);
+          if (myTurn) publishLater(h.staged);
         }}
       />
 
