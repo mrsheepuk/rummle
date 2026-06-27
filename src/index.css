@@ -674,6 +674,46 @@ input:focus {
   color: var(--primary);
 }
 
+/* ----- Notification priming dialog ----- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(20, 14, 4, 0.55);
+}
+
+.notify-card {
+  text-align: center;
+  animation: notify-pop 160ms ease-out;
+}
+
+.notify-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.notify-card .notify-hint {
+  font-size: 0.85rem;
+}
+
+@keyframes notify-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notify-card {
+    animation: none;
+  }
+}
+
 .winner-banner {
   background: linear-gradient(120deg, var(--green), var(--accent));
   color: #1a1208;

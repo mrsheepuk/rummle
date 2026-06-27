@@ -6,6 +6,9 @@ import type { MeldIds } from "../game/rules";
 import { Board, type BoardHandle } from "./Board";
 import { isMuted, playRemoteTick, playTurnComplete, playWin, setMuted } from "./sounds";
 import { useActiveChipScroll } from "./useActiveChipScroll";
+import { useTurnNotification } from "./useTurnNotification";
+import { NotifyMenuItem } from "./NotifyMenuItem";
+import { GAME_LABELS } from "../platform/model";
 
 const DRAFT_THROTTLE_MS = 300;
 
@@ -78,6 +81,18 @@ export function GameView({
   const myTurn = activeId === me && game.status === "playing";
   const players = Object.values(game.players).sort((a, b) => a.seat - b.seat);
   const myRack = game.hands[me] ?? [];
+
+  // Ping the player when it becomes their turn while they're not looking.
+  // Disabled under ?test (one host drives every seat, so "your turn" is noise).
+  useTurnNotification({
+    enabled: game.status === "playing" && !testMode,
+    myTurn,
+    currentTurn: game.currentTurn,
+    turnOrder: game.turnOrder,
+    players: game.players,
+    gameId: game.id,
+    gameLabel: GAME_LABELS[game.gameType],
+  });
 
   // When spectating, mirror the active player's live draft (if it's for the
   // current turn) instead of the committed table.
@@ -231,6 +246,7 @@ export function GameView({
                     <span className="menu-ico" aria-hidden="true">{muted ? "🔇" : "🔊"}</span>
                     {muted ? "Unmute sounds" : "Mute sounds"}
                   </button>
+                  <NotifyMenuItem onDone={() => setMenuOpen(false)} />
                   <button className="menu-item" role="menuitem" onClick={onLeave}>
                     <span className="menu-ico" aria-hidden="true">⎋</span>
                     Home

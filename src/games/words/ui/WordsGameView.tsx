@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { playRemoteTick, playTurnComplete, playWin } from "../../../ui/sounds";
+import { useTurnNotification } from "../../../ui/useTurnNotification";
+import { NotifyMenuItem } from "../../../ui/NotifyMenuItem";
 import { buildIndex, currentPlayerId, scorePlay } from "../engine";
 import {
   challengeWordsPlay,
@@ -11,7 +13,7 @@ import {
   subscribeWordsDraft,
   type WordsDraft,
 } from "../sync";
-import { GameError } from "../../../platform/model";
+import { GameError, GAME_LABELS } from "../../../platform/model";
 import type { Placement, WordsGameState } from "../model";
 import { WordsBoard, type WordsBoardHandle } from "./WordsBoard";
 import { useActiveChipScroll } from "../../../ui/useActiveChipScroll";
@@ -51,6 +53,18 @@ export function WordsGameView({
   const activeChipRef = useActiveChipScroll(activeId);
   const myTurn = activeId === me && game.status === "playing";
   const players = Object.values(game.players).sort((a, b) => a.seat - b.seat);
+
+  // Ping the player when it becomes their turn while they're away (matches
+  // Numbers). Suppressed under ?test, where one host drives every seat.
+  useTurnNotification({
+    enabled: game.status === "playing" && !testMode,
+    myTurn,
+    currentTurn: game.currentTurn,
+    turnOrder: game.turnOrder,
+    players: game.players,
+    gameId: game.id,
+    gameLabel: GAME_LABELS[game.gameType],
+  });
 
   // Watch the active player's in-progress turn (quasi-real-time), and mirror it
   // read-only when it's not our turn and it's for the current turn/player.
@@ -218,6 +232,7 @@ export function WordsGameView({
                       Challenge last play
                     </button>
                   )}
+                  <NotifyMenuItem onDone={() => setMenuOpen(false)} />
                   <button className="menu-item" role="menuitem" onClick={onLeave}>
                     <span className="menu-ico" aria-hidden="true">⎋</span>
                     Home

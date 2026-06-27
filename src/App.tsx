@@ -10,6 +10,7 @@ import { JoinPrompt } from "./ui/JoinPrompt";
 import { GameView } from "./ui/GameView";
 import { WordsGameView } from "./games/words/ui/WordsGameView";
 import { DebugOverlay } from "./ui/DebugOverlay";
+import { NotifyPrompt } from "./ui/NotifyPrompt";
 
 export function App() {
   const { gameId, goToGame, goHome } = useRoute();
@@ -69,10 +70,21 @@ export function App() {
     if (game.status === "lobby") {
       return <Lobby game={game} me={user.uid} onLeave={goHome} />;
     }
-    if (game.gameType === "words") {
-      return <WordsGameView game={game} me={user.uid} onLeave={goHome} stale={stale} />;
-    }
-    return <GameView game={game} me={user.uid} onLeave={goHome} stale={stale} />;
+    // The priming dialog rides above whichever game view is active; it only
+    // surfaces once per browser and never in the one-host ?test harness.
+    const testMode = new URLSearchParams(location.search).has("test");
+    const view =
+      game.gameType === "words" ? (
+        <WordsGameView game={game} me={user.uid} onLeave={goHome} stale={stale} />
+      ) : (
+        <GameView game={game} me={user.uid} onLeave={goHome} stale={stale} />
+      );
+    return (
+      <>
+        {view}
+        <NotifyPrompt active={game.status === "playing" && !testMode} />
+      </>
+    );
   }
 }
 
