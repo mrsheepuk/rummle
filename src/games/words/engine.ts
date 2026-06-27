@@ -58,6 +58,8 @@ export function createWordsGame(args: {
     scores: {},
     scorelessTurns: 0,
     winnerId: null,
+    lastPlay: null,
+    challenge: null,
   };
 }
 
@@ -98,6 +100,8 @@ export function startWordsGame(
     scores,
     scorelessTurns: 0,
     winnerId: null,
+    lastPlay: null,
+    challenge: null,
   };
 }
 
@@ -108,6 +112,7 @@ export function buildIndex(state: WordsGameState): Map<string, LetterTile> {
 
 function assertActive(state: WordsGameState, uid: string): void {
   if (state.status !== "playing") throw new GameError("Game is not in progress");
+  if (state.challenge) throw new GameError("Resolve the challenge first");
   if (currentPlayerId(state) !== uid) throw new GameError("It is not your turn");
 }
 
@@ -284,13 +289,19 @@ export function applyCommit(state: WordsGameState, input: CommitInput): WordsGam
   const score = scorePlay(state.board, placements, index);
 
   const board = [...state.board, ...placements];
-  let newRack = rack.filter((id) => !used.has(id));
+  const newRack = rack.filter((id) => !used.has(id));
   const bag = state.bag.slice();
-  while (newRack.length < RACK_SIZE && bag.length > 0) newRack.push(bag.shift()!);
+  const drawn: string[] = [];
+  while (newRack.length < RACK_SIZE && bag.length > 0) {
+    const id = bag.shift()!;
+    drawn.push(id);
+    newRack.push(id);
+  }
   const scores = { ...state.scores, [uid]: (state.scores[uid] ?? 0) + score };
   const racks = { ...state.racks, [uid]: newRack };
 
-  // Going out (rack emptied with an empty bag) ends the game.
+  // Going out (rack emptied with an empty bag) ends the game. A finished play
+  // can't be challenged, so no lastPlay is recorded.
   if (newRack.length === 0 && bag.length === 0) {
     return finalize({ ...state, updatedAt: now, board, bag, racks, scores }, index, uid);
   }
@@ -303,6 +314,8 @@ export function applyCommit(state: WordsGameState, input: CommitInput): WordsGam
     scores,
     scorelessTurns: 0,
     currentTurn: nextTurn(state),
+    // Record the play so the next player can challenge it.
+    lastPlay: { uid, placements, drawn, score, prevScorelessTurns: state.scorelessTurns },
   };
 }
 
@@ -336,7 +349,68 @@ function endOrAdvance(state: WordsGameState): WordsGameState {
   if (scorelessTurns >= state.turnOrder.length * 2) {
     return finalize({ ...state, scorelessTurns }, buildIndex(state), null);
   }
-  return { ...state, scorelessTurns, currentTurn: nextTurn(state) };
+  // A pass/exchange accepts the prior play — it's no longer challengeable.
+  return { ...state, scorelessTurns, currentTurn: nextTurn(state), lastPlay: null };
+}
+
+/**
+ * The active player challenges the immediately-preceding play. There's no
+ * dictionary, so this doesn't adjudicate — it pauses play and hands the decision
+ * to the player who made the play (see {@link respondToChallenge}). Only that
+ * one play is challengeable, and only until the next play is committed.
+ */
+export function applyChallenge(state: WordsGameState, uid: string, now: number): WordsGameState {
+  assertActive(state, uid); // also rejects a second, overlapping challenge
+  const last = state.lastPlay;
+  if (!last) throw new GameError("There's no play to challenge");
+  if (last.uid === uid) throw new GameError("You can't challenge your own play");
+  return { ...state, updatedAt: now, challenge: { by: uid, against: last.uid } };
+}
+
+/**
+ * The challenged player responds. `stand` keeps the word (no penalty to either
+ * side — play resumes with the challenger). Otherwise the play is withdrawn:
+ * its tiles come off the board and back to the rack, the drawn tiles return to
+ * the bag, the score is undone, and the turn returns to the challenged player to
+ * replay. Either way the play is no longer challengeable.
+ */
+export function respondToChallenge(
+  state: WordsGameState,
+  uid: string,
+  stand: boolean,
+  now: number,
+): WordsGameState {
+  const challenge = state.challenge;
+  if (!challenge) throw new GameError("There's no challenge to answer");
+  if (challenge.against !== uid) throw new GameError("Only the challenged player can respond");
+  const last = state.lastPlay;
+  if (!last) throw new GameError("The challenged play is gone");
+
+  if (stand) {
+    // Word stands: clear the challenge, the challenger resumes their turn.
+    return { ...state, updatedAt: now, challenge: null, lastPlay: null };
+  }
+
+  // Withdrawn: undo the play exactly and hand the turn back to its author.
+  const placedIds = new Set(last.placements.map((p) => p.tileId));
+  const drawnSet = new Set(last.drawn);
+  const board = state.board.filter((p) => !placedIds.has(p.tileId));
+  const rack = (state.racks[uid] ?? []).filter((id) => !drawnSet.has(id));
+  const newRack = [...rack, ...last.placements.map((p) => p.tileId)];
+  const bag = [...last.drawn, ...state.bag]; // drawn tiles were shifted off the front
+  const scores = { ...state.scores, [uid]: (state.scores[uid] ?? 0) - last.score };
+  return {
+    ...state,
+    updatedAt: now,
+    board,
+    bag,
+    racks: { ...state.racks, [uid]: newRack },
+    scores,
+    scorelessTurns: last.prevScorelessTurns,
+    currentTurn: state.turnOrder.indexOf(uid),
+    challenge: null,
+    lastPlay: null,
+  };
 }
 
 /**

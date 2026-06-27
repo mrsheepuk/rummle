@@ -16,6 +16,40 @@ export interface Placement {
   letter: string;
 }
 
+/**
+ * The most recent committed play, kept so the next player can challenge it
+ * (self-policing — there's no dictionary). Holds everything needed to revert
+ * the play exactly: the tiles placed, the ids drawn to refill the rack, the
+ * points awarded, and the scoreless counter from before the play. Replaced on
+ * every commit and cleared by any non-scoring action (pass/exchange) — so only
+ * the immediately-preceding play is ever challengeable.
+ */
+export interface LastPlay {
+  /** Who committed the play. */
+  uid: string;
+  /** The tiles they placed on the board. */
+  placements: Placement[];
+  /** Tile ids drawn from the bag to refill their rack afterwards. */
+  drawn: string[];
+  /** Points the play scored (subtracted on a withdrawal). */
+  score: number;
+  /** scorelessTurns as it was before the play, restored on a withdrawal. */
+  prevScorelessTurns: number;
+}
+
+/**
+ * An open challenge against {@link LastPlay}. The challenger (the active player)
+ * raises it; the challenged player decides — stand by the word (play stands, no
+ * penalty for either side) or withdraw it (the play is reverted and they replay
+ * the turn). Play is paused until they respond.
+ */
+export interface PendingChallenge {
+  /** The active player who raised the challenge. */
+  by: string;
+  /** The player whose last play is being challenged (== lastPlay.uid). */
+  against: string;
+}
+
 export interface WordsGameState extends BaseGameState {
   gameType: "words";
 
@@ -32,4 +66,8 @@ export interface WordsGameState extends BaseGameState {
    * player has had two in a row, the standard stalemate cut-off.
    */
   scorelessTurns: number;
+  /** The previous play, while it's still challengeable; null otherwise. */
+  lastPlay: LastPlay | null;
+  /** An unresolved challenge against {@link lastPlay}, or null. */
+  challenge: PendingChallenge | null;
 }

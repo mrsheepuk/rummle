@@ -8,7 +8,7 @@ It hosts two games that share the same lobby, identity and realtime sync:
 - **Words** — a Scrabble-like game. Build words on a 15×15 board, score with
   premium squares and the 50-point bingo. _Self-policing: no dictionary check
   (yet) — the engine enforces geometry and tile conservation, players police the
-  words._
+  words, and a **Challenge** lets the next player contest a dodgy play._
 
 > The platform is named **Rummle**; the two games are surfaced to players as
 > **Numbers** and **Words**. Internally the number game keeps the `gameType`
@@ -137,8 +137,14 @@ Useful scripts:
   gap-free, connected, centre-opening) and tile conservation, but does **not**
   check that words are real. A dictionary (client DAWG or a Cloud-Function
   validator) is the obvious next step.
+- **Challenge** (the human stand-in for a dictionary): on your turn, the game-bar
+  menu (☰) offers **Challenge last play**. The player who made it then decides —
+  *stand by* their word (it stands, no penalty) or *withdraw* it (the play is
+  reverted and they replay the turn). Only the immediately-preceding play can be
+  challenged.
 - Board view has a **Fit / Zoom** toggle (🔍 / ⛶): fit the whole board, or zoom
-  into a square slippy viewport you pan around.
+  into a square slippy viewport you pan around. The **☰ menu** holds Challenge
+  and Home.
 
 ## Connecting a real Firebase project
 
