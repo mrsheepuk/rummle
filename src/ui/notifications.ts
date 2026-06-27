@@ -102,13 +102,19 @@ export function setPrimed(): void {
   }
 }
 
+/** Outcome of an attempt to show a notification, for debug logging. */
+export type NotifyResult = { ok: true } | { ok: false; reason: string };
+
 /**
  * Show a "your turn" notification. No-ops unless enabled. Tagged per game so a
  * fresh turn replaces any stale notification rather than stacking; clicking it
- * focuses the game tab.
+ * focuses the game tab. Returns what happened so callers can surface it in the
+ * debug log.
  */
-export function showTurnNotification(opts: { who: string; gameLabel: string; gameId: string }): void {
-  if (!notifyEnabled()) return;
+export function showTurnNotification(opts: { who: string; gameLabel: string; gameId: string }): NotifyResult {
+  if (!notificationsSupported()) return { ok: false, reason: "unsupported" };
+  if (Notification.permission !== "granted") return { ok: false, reason: `perm=${Notification.permission}` };
+  if (!readPref()) return { ok: false, reason: "pref-off" };
   try {
     const n = new Notification("Your turn!", {
       body: `${opts.who} just played — it's your turn in ${opts.gameLabel}`,
@@ -123,7 +129,16 @@ export function showTurnNotification(opts: { who: string; gameLabel: string; gam
       }
       n.close();
     };
-  } catch {
-    /* ignore — e.g. permission revoked between the gate and here */
+    return { ok: true };
+  } catch (e) {
+    // e.g. permission revoked between the gate and here, or a platform that
+    // throws on the constructor (some iOS/Android-tab cases).
+    return { ok: false, reason: `error:${e instanceof Error ? e.name : "unknown"}` };
   }
+}
+
+/** A terse "perm/pref" snapshot for the debug overlay (e.g. "granted/on"). */
+export function notifyDebugState(): string {
+  if (!notificationsSupported()) return "unsupported";
+  return `${Notification.permission}/${readPref() ? "on" : "off"}`;
 }

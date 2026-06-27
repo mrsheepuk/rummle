@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { PlayerInfo } from "../platform/model";
-import { showTurnNotification } from "./notifications";
+import { logConn } from "../sync/connectionLog";
+import { notificationPermission, showTurnNotification } from "./notifications";
 
 /**
  * Fire a "your turn" notification when the turn passes *to* this player while
@@ -26,18 +27,30 @@ export function useTurnNotification(opts: {
   const prevTurn = useRef(currentTurn);
 
   useEffect(() => {
-    const changed = currentTurn !== prevTurn.current;
-    const justPlayed = turnOrder[prevTurn.current];
+    const from = prevTurn.current;
+    const changed = currentTurn !== from;
+    const justPlayed = turnOrder[from];
     prevTurn.current = currentTurn;
 
-    if (!enabled || !changed || !myTurn) return;
-    // Only when the player isn't already looking here (covers both another tab
-    // and another window). Phase 2's service worker will apply the same gate for
-    // closed-tab pushes.
-    if (typeof document !== "undefined" && document.hasFocus()) return;
+    if (!changed) return; // first render, or a non-turn re-render
 
-    const who = (justPlayed && players[justPlayed]?.name) || "Someone";
-    showTurnNotification({ who, gameLabel, gameId });
+    // Walk the gates in order, recording why we did or didn't fire so `?debug=1`
+    // can show exactly where it stopped. The tab-focus gate suppresses pings for
+    // someone already watching the board (covers another tab and another
+    // window); phase 2's service worker applies the same gate for closed-tab
+    // pushes.
+    const focused = typeof document !== "undefined" && document.hasFocus();
+    let outcome: string;
+    if (!enabled) outcome = "skip:game-inactive-or-test";
+    else if (!myTurn) outcome = "skip:not-my-turn";
+    else if (focused) outcome = "skip:tab-focused";
+    else {
+      const who = (justPlayed && players[justPlayed]?.name) || "Someone";
+      const res = showTurnNotification({ who, gameLabel, gameId });
+      outcome = res.ok ? "fired" : `skip:${res.reason}`;
+    }
+
+    logConn("notify", `turn ${from}→${currentTurn} mine=${myTurn} focus=${focused} ${notificationPermission()} ${outcome}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTurn]);
 }

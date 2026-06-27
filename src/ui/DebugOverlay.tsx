@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { clearConnLog, getConnLog, logConn, subscribeConnLog } from "../sync/connectionLog";
 import { forceResync } from "../sync/connection";
 import { probeGameFromServer } from "../sync/gameSync";
+import { notifyDebugState, showTurnNotification } from "./notifications";
 
 // On-screen connection diagnostics for mobile, where the dev console can't be
 // reached. Rendered only when `?debug=1` is set. Shows live network/visibility
@@ -56,13 +57,23 @@ export function DebugOverlay({ gameId, stale }: { gameId: string | null; stale: 
           net {navigator.onLine ? "online" : "offline"}
         </span>
         <span>vis {document.visibilityState}</span>
+        <span className={document.hasFocus() ? "ok" : "bad"}>focus {document.hasFocus() ? "yes" : "no"}</span>
         <span className={stale ? "bad" : "ok"}>{stale ? "stale" : "live"}</span>
         <span>snap {snapAge === null ? "—" : `${snapAge}s ago`}</span>
+        <span>notify {notifyDebugState()}</span>
       </div>
       <div className="dbg-actions">
         <button onClick={() => void forceResync("debug-button")}>Resync</button>
         <button onClick={() => void probe()} disabled={!gameId}>
           Probe
+        </button>
+        <button
+          onClick={() => {
+            const res = showTurnNotification({ who: "Debug", gameLabel: "test", gameId: gameId ?? "test" });
+            logConn("notify", `manual test → ${res.ok ? "fired" : `skip:${res.reason}`}`);
+          }}
+        >
+          Test
         </button>
         <button onClick={() => clearConnLog()}>Clear</button>
       </div>
