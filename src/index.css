@@ -532,17 +532,25 @@ input:focus {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
+/* Player chips live on a single scrollable row so the meta block (pool + menu)
+   stays locked top-right however many players there are. The active chip is
+   auto-scrolled into view by the component on turn change. */
 .turn-track {
   display: flex;
   gap: 0.4rem;
-  flex-wrap: wrap;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.turn-track::-webkit-scrollbar { display: none; }
 
 .turn-chip {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 0.45rem;
   background: var(--bg-card);
@@ -579,6 +587,7 @@ input:focus {
 
 .game-meta {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 0.6rem;
   font-size: 0.85rem;
@@ -611,6 +620,7 @@ input:focus {
   right: 0;
   top: calc(100% + 6px);
   width: 190px;
+  max-width: calc(100vw - 1rem);
   background: var(--bg-input);
   border: 1px solid var(--line);
   border-radius: 13px;

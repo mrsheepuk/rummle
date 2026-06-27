@@ -5,12 +5,13 @@ import { commitTurn, drawTile, publishDraft, subscribeDraft, type Draft } from "
 import type { MeldIds } from "../game/rules";
 import { Board, type BoardHandle } from "./Board";
 import { isMuted, playRemoteTick, playTurnComplete, playWin, setMuted } from "./sounds";
+import { useActiveChipScroll } from "./useActiveChipScroll";
 
 const DRAFT_THROTTLE_MS = 300;
 
 export function GameView({
   game,
-  me,
+  me: meProp,
   onLeave,
   stale,
 }: {
@@ -20,6 +21,12 @@ export function GameView({
   /** We're offline / serving cached data — the board may be behind. */
   stale: boolean;
 }) {
+  // `?test` lets one host drive every seat: the effective player is always
+  // whoever is to move, so committing/drawing hands you to the next player.
+  const testMode = new URLSearchParams(location.search).has("test");
+  const activeId = currentPlayerId(game);
+  const me = testMode && activeId ? activeId : meProp;
+
   const index = useMemo(() => buildIndex(game), [game.seed]);
   const handle = useRef<BoardHandle>({ table: game.table, rack: game.hands[me] ?? [] });
   const [resetNonce, setResetNonce] = useState(0);
@@ -67,7 +74,7 @@ export function GameView({
     prevStatus.current = game.status;
   }, [game.currentTurn, game.status]);
 
-  const activeId = currentPlayerId(game);
+  const activeChipRef = useActiveChipScroll(activeId);
   const myTurn = activeId === me && game.status === "playing";
   const players = Object.values(game.players).sort((a, b) => a.seat - b.seat);
   const myRack = game.hands[me] ?? [];
@@ -121,7 +128,7 @@ export function GameView({
     setBusy(true);
     setError(null);
     try {
-      await drawTile(game.id);
+      await drawTile(game.id, me);
     } catch (e) {
       setError(messageOf(e));
     } finally {
@@ -134,7 +141,7 @@ export function GameView({
     setBusy(true);
     setError(null);
     try {
-      await commitTurn(game.id, handle.current.table, handle.current.rack);
+      await commitTurn(game.id, handle.current.table, handle.current.rack, me);
     } catch (e) {
       setError(messageOf(e));
     } finally {
@@ -164,6 +171,7 @@ export function GameView({
             return (
               <div
                 key={p.uid}
+                ref={p.uid === activeId ? activeChipRef : undefined}
                 className={`turn-chip${p.uid === activeId ? " active" : ""}${p.uid === me ? " me" : ""}`}
               >
                 <span className="chip-name">{p.name}</span>
@@ -246,6 +254,7 @@ export function GameView({
       )}
 
       <Board
+        key={me}
         committedTable={boardTable}
         hand={myRack}
         index={index}

@@ -77,6 +77,21 @@ Then open http://localhost:5173. Create a **Numbers** or **Words** game, copy th
 share link, and open it in a second browser/tab to play as another anonymous
 player.
 
+### Testing multiplayer on your own (`?test`)
+
+Append `?test` to a game URL (e.g. `/g/CODE?test`) to unlock local-testing
+affordances without juggling multiple browsers:
+
+- **Start solo** — the host can start with a single player.
+- **Add fake players** — an _Add fake player_ button in the lobby seats up to
+  four. They're synthetic (they never sign in); the host performs all their
+  writes.
+- **Take every turn** — in play you act as whoever is to move, so each
+  commit / draw / pass hands you straight to the next seat. Handy for exercising
+  the multi-player turn bar and the full turn flow end to end.
+
+Everything here is gated behind `?test`; normal play is unaffected.
+
 Useful scripts:
 
 | Command            | What it does                                  |

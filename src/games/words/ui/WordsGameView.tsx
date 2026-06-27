@@ -12,12 +12,13 @@ import {
 import { GameError } from "../../../platform/model";
 import type { Placement, WordsGameState } from "../model";
 import { WordsBoard, type WordsBoardHandle } from "./WordsBoard";
+import { useActiveChipScroll } from "../../../ui/useActiveChipScroll";
 
 const DRAFT_THROTTLE_MS = 300;
 
 export function WordsGameView({
   game,
-  me,
+  me: meProp,
   onLeave,
   stale,
 }: {
@@ -26,6 +27,12 @@ export function WordsGameView({
   onLeave: () => void;
   stale: boolean;
 }) {
+  // `?test` lets one host drive every seat: the effective player is always
+  // whoever is to move, so committing/passing hands you to the next player.
+  const testMode = new URLSearchParams(location.search).has("test");
+  const activeId = currentPlayerId(game);
+  const me = testMode && activeId ? activeId : meProp;
+
   const index = useMemo(() => buildIndex(game), [game.seed]);
   const handle = useRef<WordsBoardHandle>({ staged: [], exchange: [] });
   const [resetNonce, setResetNonce] = useState(0);
@@ -38,7 +45,7 @@ export function WordsGameView({
   const [zoomed, setZoomed] = useState(false);
   const [draft, setDraft] = useState<WordsDraft | null>(null);
 
-  const activeId = currentPlayerId(game);
+  const activeChipRef = useActiveChipScroll(activeId);
   const myTurn = activeId === me && game.status === "playing";
   const players = Object.values(game.players).sort((a, b) => a.seat - b.seat);
 
@@ -118,11 +125,11 @@ export function WordsGameView({
 
   const onCommit = () => {
     cancelPendingPublish();
-    void run(() => commitWordsPlay(game.id, handle.current.staged));
+    void run(() => commitWordsPlay(game.id, handle.current.staged, me));
   };
   const onPass = () => {
     cancelPendingPublish();
-    void run(() => passWordsTurn(game.id));
+    void run(() => passWordsTurn(game.id, me));
   };
   const onRecall = () => {
     setError(null);
@@ -131,7 +138,7 @@ export function WordsGameView({
   const onExchange = () => {
     if (handle.current.exchange.length === 0) return setError("Drag tiles into the exchange tray first");
     cancelPendingPublish();
-    void run(() => exchangeWordsTiles(game.id, handle.current.exchange)).then(() => setResetNonce((k) => k + 1));
+    void run(() => exchangeWordsTiles(game.id, handle.current.exchange, me)).then(() => setResetNonce((k) => k + 1));
   };
 
   const winner = game.winnerId ? game.players[game.winnerId]?.name : null;
@@ -144,6 +151,7 @@ export function WordsGameView({
           {players.map((p) => (
             <div
               key={p.uid}
+              ref={p.uid === activeId ? activeChipRef : undefined}
               className={`turn-chip${p.uid === activeId ? " active" : ""}${p.uid === me ? " me" : ""}`}
             >
               <span className="chip-name">{p.name}</span>
@@ -179,6 +187,7 @@ export function WordsGameView({
       )}
 
       <WordsBoard
+        key={me}
         board={game.board}
         rack={game.racks[me] ?? []}
         index={index}

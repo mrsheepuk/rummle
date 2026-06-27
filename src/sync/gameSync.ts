@@ -69,9 +69,11 @@ export async function beginGame(id: string, opts: { allowSolo?: boolean } = {}):
   await mutateGame(id, codec, (state) => startGame(state, Date.now(), opts));
 }
 
-export async function drawTile(id: string): Promise<void> {
+// `asUid` lets `?test` mode act as whichever player is to move (the host still
+// performs the write); it defaults to the signed-in user in normal play.
+export async function drawTile(id: string, asUid?: string): Promise<void> {
   const user = await ensureSignedIn();
-  await mutateGame(id, codec, (state) => applyDraw(state, user.uid, Date.now()));
+  await mutateGame(id, codec, (state) => applyDraw(state, asUid ?? user.uid, Date.now()));
   await clearDraft(id);
 }
 
@@ -79,9 +81,12 @@ export async function commitTurn(
   id: string,
   afterTable: MeldIds[],
   afterRack: string[],
+  asUid?: string,
 ): Promise<void> {
   const user = await ensureSignedIn();
-  await mutateGame(id, codec, (state) => applyCommit(state, user.uid, afterTable, afterRack, Date.now()));
+  await mutateGame(id, codec, (state) =>
+    applyCommit(state, asUid ?? user.uid, afterTable, afterRack, Date.now()),
+  );
   await clearDraft(id);
 }
 

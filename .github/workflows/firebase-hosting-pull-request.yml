@@ -23,7 +23,12 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          # Pinned below 22.23.0: the June-2026 CVE-2026-48931 fix changed
+          # http.Agent keep-alive reuse, tripping a false-positive
+          # ERR_STREAM_PREMATURE_CLOSE in node-fetch@2 (under firebase-tools).
+          # The non-idempotent retry then fails the hosting release with
+          # FAILED_PRECONDITION. Unpin once nodejs/node#64004 lands in 22.x.
+          node-version: 22.22.0
           cache: npm
       - run: npm ci
       - run: npm run build
@@ -39,3 +44,5 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_RUMMLE_PROD }}
           projectId: rummle-prod
           expires: 7d
+          # >=15.22.3 carries the keep-alive premature-close mitigations.
+          firebaseToolsVersion: ^15.22.3

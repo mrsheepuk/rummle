@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { beginGame } from "../sync/gameSync";
 import { beginWordsGame } from "../games/words/sync";
+import { addTestPlayer } from "../games/registry";
 import { GAME_LABELS, MAX_PLAYERS, MIN_PLAYERS, type BaseGameState } from "../platform/model";
 
 export function Lobby({
@@ -13,6 +14,7 @@ export function Lobby({
   onLeave: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -33,6 +35,20 @@ export function Lobby({
       setError(e instanceof Error ? e.message : "Could not start game");
     } finally {
       setBusy(false);
+    }
+  }
+
+  // `?test`: seat a fake player so one browser can fill the lobby. The host
+  // drives every seat once the game starts (see GameView/WordsGameView).
+  async function addFake() {
+    setAdding(true);
+    setError(null);
+    try {
+      await addTestPlayer(game.id, `Bot ${players.length + 1}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not add player");
+    } finally {
+      setAdding(false);
     }
   }
 
@@ -76,6 +92,12 @@ export function Lobby({
             </li>
           ))}
         </ul>
+
+        {testMode && isHost && players.length < MAX_PLAYERS && (
+          <button className="btn btn-small" disabled={adding} onClick={addFake}>
+            {adding ? "Adding…" : "Add fake player (test)"}
+          </button>
+        )}
 
         {isHost ? (
           <button className="btn btn-primary" disabled={!canStart || busy} onClick={start}>

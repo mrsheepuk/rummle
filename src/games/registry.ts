@@ -52,3 +52,16 @@ export async function joinAnyGame(code: string, name: string): Promise<string> {
   await joinGameDoc(id, user.uid, name, Date.now());
   return id;
 }
+
+/**
+ * Test-only: seat an extra fake player so one browser can fill a lobby and
+ * exercise multi-player UI. The synthetic uid never authenticates — the host
+ * performs the write (and later drives the fake seat's turns). Game-agnostic
+ * like `joinAnyGame`: it only touches the envelope roster, so no codec needed.
+ */
+export async function addTestPlayer(id: string, name: string): Promise<string> {
+  await ensureSignedIn();
+  const uid = `test-${crypto.randomUUID()}`;
+  await joinGameDoc(id, uid, name, Date.now());
+  return uid;
+}

@@ -49,23 +49,25 @@ export async function beginWordsGame(id: string, opts: { allowSolo?: boolean } =
   await mutateGame(id, wordsCodec, (state) => startWordsGame(state, Date.now(), opts));
 }
 
-export async function commitWordsPlay(id: string, placements: Placement[]): Promise<void> {
+// `asUid` lets `?test` mode act as whichever player is to move (the host still
+// performs the write); it defaults to the signed-in user in normal play.
+export async function commitWordsPlay(id: string, placements: Placement[], asUid?: string): Promise<void> {
   const user = await ensureSignedIn();
   await mutateGame(id, wordsCodec, (state) =>
-    applyCommit(state, { uid: user.uid, placements, now: Date.now() }),
+    applyCommit(state, { uid: asUid ?? user.uid, placements, now: Date.now() }),
   );
   await clearWordsDraft(id);
 }
 
-export async function exchangeWordsTiles(id: string, tileIds: string[]): Promise<void> {
+export async function exchangeWordsTiles(id: string, tileIds: string[], asUid?: string): Promise<void> {
   const user = await ensureSignedIn();
-  await mutateGame(id, wordsCodec, (state) => applyExchange(state, user.uid, tileIds, Date.now()));
+  await mutateGame(id, wordsCodec, (state) => applyExchange(state, asUid ?? user.uid, tileIds, Date.now()));
   await clearWordsDraft(id);
 }
 
-export async function passWordsTurn(id: string): Promise<void> {
+export async function passWordsTurn(id: string, asUid?: string): Promise<void> {
   const user = await ensureSignedIn();
-  await mutateGame(id, wordsCodec, (state) => applyPass(state, user.uid, Date.now()));
+  await mutateGame(id, wordsCodec, (state) => applyPass(state, asUid ?? user.uid, Date.now()));
   await clearWordsDraft(id);
 }
 

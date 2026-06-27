@@ -154,6 +154,16 @@ as-is, so there's no reshape, and the member-only `draft` rule is reused.
   after start (only new players are blocked); the anonymous uid persists in the
   browser, so reopening `/g/CODE` resumes you. Cross-device rejoin would need a
   portable player token (not done).
+- **`?test` is a one-browser multiplayer harness.** Appending `?test` to a game
+  URL unlocks: solo start (`allowSolo` on `startGame`), an *Add fake player*
+  lobby button (`addTestPlayer` in `registry.ts` → `joinGameDoc` with a
+  synthetic `test-…` uid), and "drive every seat" play — `GameView`/
+  `WordsGameView` make the *effective* `me` the active player and the turn
+  actions take an optional `asUid`, so one host commits/draws/passes for whoever
+  is to move (boards are `key`ed by the effective uid so each seat reloads its
+  own rack). The fake uids never authenticate — the host performs all writes —
+  so it rides the existing member-only rules unchanged. All gated behind the
+  query param; normal play is untouched.
 - **Tiles must not rely on colour alone** (a player is colour-blind). Each suit
   has a distinct shape pip (● blue ▲ red ◆ orange ■ black) plus a
   contrast-tuned digit; keep that redundancy in `TileView.tsx` / palette.
