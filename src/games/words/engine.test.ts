@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   GameError,
   addPlayer,
+  applyChallenge,
   applyCommit,
   applyExchange,
   applyPass,
   createWordsGame,
   currentPlayerId,
+  respondToChallenge,
   scorePlay,
   startWordsGame,
 } from "./engine";
@@ -123,6 +125,8 @@ function playing(over: Partial<WordsGameState> = {}): WordsGameState {
     scores: { h: 0, g: 0 },
     scorelessTurns: 0,
     winnerId: null,
+    lastPlay: null,
+    challenge: null,
     ...over,
   };
 }
@@ -182,5 +186,62 @@ describe("exchange + pass", () => {
     let g = playing({ scorelessTurns: 3 });
     g = applyPass(g, "h", 1); // 4th scoreless turn = 2 × 2 players
     expect(g.status).toBe("finished");
+  });
+});
+
+describe("challenge", () => {
+  // h commits CAT, leaving g to move with a challengeable lastPlay.
+  const committed = () => applyCommit(playing(), { uid: "h", placements: row(CENTER, 6, "CAT"), now: 5 });
+
+  it("records the previous play so it can be challenged", () => {
+    const g = committed();
+    expect(g.lastPlay).toMatchObject({ uid: "h", score: 10 });
+    expect(g.lastPlay!.placements).toHaveLength(3);
+  });
+
+  it("forgets the play once a non-scoring action accepts it", () => {
+    const g = applyPass(committed(), "g", 6);
+    expect(g.lastPlay).toBeNull();
+    expect(() => applyChallenge(g, "h", 7)).toThrow(/no play to challenge/i);
+  });
+
+  it("only the active player may challenge, and not their own play", () => {
+    const g = committed(); // g to move
+    expect(() => applyChallenge(g, "h", 6)).toThrow(/your turn/i);
+    const own = playing({ board: row(CENTER, 6, "CAT"), lastPlay: { uid: "h", placements: [], drawn: [], score: 0, prevScorelessTurns: 0 } });
+    expect(() => applyChallenge(own, "h", 6)).toThrow(/your own play/i);
+  });
+
+  it("freezes other actions until the challenge is answered", () => {
+    const g = applyChallenge(committed(), "g", 6);
+    expect(g.challenge).toEqual({ by: "g", against: "h" });
+    expect(() => applyPass(g, "g", 7)).toThrow(/challenge first/i);
+    expect(() => applyChallenge(g, "g", 7)).toThrow(/challenge first/i);
+  });
+
+  it("only the challenged player may respond", () => {
+    const g = applyChallenge(committed(), "g", 6);
+    expect(() => respondToChallenge(g, "g", false, 7)).toThrow(/challenged player/i);
+  });
+
+  it("standing by the word keeps the play, with no penalty, and resumes the challenger", () => {
+    const g = respondToChallenge(applyChallenge(committed(), "g", 6), "h", true, 7);
+    expect(g.scores["h"]).toBe(10);
+    expect(g.board).toHaveLength(3);
+    expect(currentPlayerId(g)).toBe("g"); // challenger plays on
+    expect(g.challenge).toBeNull();
+    expect(g.lastPlay).toBeNull(); // no longer challengeable
+  });
+
+  it("withdrawing the word reverts it exactly and hands the turn back", () => {
+    const before = playing();
+    const g = respondToChallenge(applyChallenge(committed(), "g", 6), "h", false, 7);
+    expect(g.board).toEqual([]);
+    expect(g.scores["h"]).toBe(0);
+    expect(g.racks["h"]!.sort()).toEqual([...before.racks["h"]!].sort());
+    expect(g.bag.sort()).toEqual([...before.bag].sort());
+    expect(currentPlayerId(g)).toBe("h"); // back to the author to replay
+    expect(g.challenge).toBeNull();
+    expect(g.lastPlay).toBeNull();
   });
 });

@@ -14,10 +14,12 @@ import {
   type Codec,
 } from "../../platform/firestoreSync";
 import {
+  applyChallenge,
   applyCommit,
   applyExchange,
   applyPass,
   createWordsGame,
+  respondToChallenge,
   startWordsGame,
 } from "./engine";
 import type { Placement, WordsGameState } from "./model";
@@ -34,6 +36,8 @@ export const wordsCodec: Codec<WordsGameState> = {
       bag: d.bag ?? [],
       racks: d.racks ?? {},
       scores: d.scores ?? {},
+      lastPlay: d.lastPlay ?? null,
+      challenge: d.challenge ?? null,
     };
   },
 };
@@ -68,6 +72,24 @@ export async function exchangeWordsTiles(id: string, tileIds: string[], asUid?: 
 export async function passWordsTurn(id: string, asUid?: string): Promise<void> {
   const user = await ensureSignedIn();
   await mutateGame(id, wordsCodec, (state) => applyPass(state, asUid ?? user.uid, Date.now()));
+  await clearWordsDraft(id);
+}
+
+// The active player challenges the previous play (no dictionary — the challenged
+// player adjudicates). `asUid` is the challenger; in `?test` mode that's whoever
+// is to move.
+export async function challengeWordsPlay(id: string, asUid?: string): Promise<void> {
+  const user = await ensureSignedIn();
+  await mutateGame(id, wordsCodec, (state) => applyChallenge(state, asUid ?? user.uid, Date.now()));
+  await clearWordsDraft(id);
+}
+
+// The challenged player stands by their word (`stand: true`) or withdraws it.
+// `asUid` is the challenged player (the responder), not the active player — in
+// `?test` mode the host writes it on their behalf.
+export async function respondWordsChallenge(id: string, stand: boolean, asUid?: string): Promise<void> {
+  const user = await ensureSignedIn();
+  await mutateGame(id, wordsCodec, (state) => respondToChallenge(state, asUid ?? user.uid, stand, Date.now()));
   await clearWordsDraft(id);
 }
 

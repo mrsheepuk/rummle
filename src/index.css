@@ -1094,6 +1094,20 @@ input:focus {
   background: var(--bg-soft);
 }
 
+/* Challenge the previous play — a flag, so it's outlined rather than filled. */
+.btn-action.is-challenge {
+  flex: 0 0 auto;
+  padding: 0 1.1rem;
+  background: transparent;
+  color: var(--orange-ink);
+  border-color: var(--orange-ink);
+  box-shadow: none;
+}
+
+.btn-action.is-challenge:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--orange-ink) 12%, transparent);
+}
+
 .game-error {
   text-align: right;
 }

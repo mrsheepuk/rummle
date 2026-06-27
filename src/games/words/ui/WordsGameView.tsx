@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { playRemoteTick, playTurnComplete, playWin } from "../../../ui/sounds";
 import { buildIndex, currentPlayerId, scorePlay } from "../engine";
 import {
+  challengeWordsPlay,
   commitWordsPlay,
   exchangeWordsTiles,
   passWordsTurn,
   publishWordsDraft,
+  respondWordsChallenge,
   subscribeWordsDraft,
   type WordsDraft,
 } from "../sync";
@@ -140,6 +142,25 @@ export function WordsGameView({
     cancelPendingPublish();
     void run(() => exchangeWordsTiles(game.id, handle.current.exchange, me)).then(() => setResetNonce((k) => k + 1));
   };
+  const onChallenge = () => {
+    cancelPendingPublish();
+    setResetNonce((k) => k + 1); // drop any tiles you'd started staging
+    void run(() => challengeWordsPlay(game.id, me));
+  };
+  const onRespond = (stand: boolean) => {
+    if (!game.challenge) return;
+    void run(() => respondWordsChallenge(game.id, stand, game.challenge!.against));
+  };
+
+  // Challenge state (self-policing — there's no dictionary). The active player
+  // can challenge the previous play; the player who made it then decides.
+  const challenge = game.challenge;
+  const challengerName = challenge ? game.players[challenge.by]?.name ?? "Someone" : null;
+  const challengedName = challenge ? game.players[challenge.against]?.name ?? "Someone" : null;
+  // In `?test` mode one host drives every seat, so let them answer for the
+  // challenged player too.
+  const iAmChallenged = !!challenge && (testMode || meProp === challenge.against);
+  const canChallenge = myTurn && !challenge && !!game.lastPlay && game.lastPlay.uid !== me;
 
   const winner = game.winnerId ? game.players[game.winnerId]?.name : null;
   const working = staged.length > 0 || exchange.length > 0;
@@ -191,7 +212,7 @@ export function WordsGameView({
         board={game.board}
         rack={game.racks[me] ?? []}
         index={index}
-        myTurn={myTurn}
+        myTurn={myTurn && !challenge}
         zoomed={zoomed}
         spectated={spectated}
         storageKey={`words:rack:${game.id}:${me}`}
@@ -204,12 +225,19 @@ export function WordsGameView({
         }}
       />
 
-      {myTurn && preview && (
+      {challenge && (
+        <p className="wpreview is-muted">
+          {iAmChallenged
+            ? `${challengerName} challenged your word — stand by it or withdraw.`
+            : `${challengerName} challenged ${challengedName}'s word.`}
+        </p>
+      )}
+      {!challenge && myTurn && preview && (
         <p className={`wpreview${preview.error ? " is-bad" : ""}`}>
           {preview.error ?? `+${preview.score} points`}
         </p>
       )}
-      {myTurn && !preview && exchange.length > 0 && (
+      {!challenge && myTurn && !preview && exchange.length > 0 && (
         <p className="wpreview is-muted">{exchange.length} tile{exchange.length > 1 ? "s" : ""} to exchange</p>
       )}
       {error && <p className="error game-error">{error}</p>}
@@ -217,6 +245,19 @@ export function WordsGameView({
       <footer className="action-bar">
         {game.status === "finished" ? (
           <span className="hint">Game over.</span>
+        ) : challenge ? (
+          iAmChallenged ? (
+            <>
+              <button className="btn btn-action is-commit" disabled={busy} onClick={() => onRespond(true)}>
+                Stand by word
+              </button>
+              <button className="btn btn-action is-reset" disabled={busy} onClick={() => onRespond(false)}>
+                Withdraw
+              </button>
+            </>
+          ) : (
+            <span className="hint">{challengedName} is responding to the challenge…</span>
+          )
         ) : myTurn ? (
           <>
             <button className="btn btn-action is-reset" disabled={busy || !working} onClick={onRecall}>
@@ -234,6 +275,11 @@ export function WordsGameView({
                 <button className="btn btn-action" disabled={busy} onClick={onPass}>
                   Pass
                 </button>
+                {canChallenge && (
+                  <button className="btn btn-action is-challenge" disabled={busy} onClick={onChallenge}>
+                    Challenge
+                  </button>
+                )}
               </>
             )}
           </>

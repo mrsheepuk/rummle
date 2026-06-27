@@ -83,7 +83,8 @@ choice, like Rummle's loose mid-turn rules): the engine enforces geometry
 (single line, gap-free, connected, opening play crosses the centre) and tile
 conservation, but never checks that words are real. A dictionary (client DAWG or
 a Cloud-Function validator — the latter also fixes cheat-safety) is the obvious
-next step. The board is stored as a **flat list of `{r,c,tileId,letter}`
+next step. The human-adjudication layer that fills the gap meanwhile is
+**Challenge** (see Gotchas). The board is stored as a **flat list of `{r,c,tileId,letter}`
 placements**, which both sidesteps the no-nested-arrays rule a 2-D grid would hit
 and is denser. UI is **drag-and-drop** (`WordsBoard`). The board sits in a
 scrollable "slippy" viewport with a **Fit/Zoom toggle** (game bar, 🔍 / ⛶).
@@ -128,6 +129,19 @@ as-is, so there's no reshape, and the member-only `draft` rule is reused.
   game doc (readable by all players). Accepted trade-off; the per-uid `hands`
   map is shaped to later move into a Cloud-Function-owned private subcollection
   without changing the UI/sync interface.
+- **Words Challenge = human adjudication, no dictionary.** Since the engine never
+  checks words are real, the active player can **Challenge** the immediately-
+  preceding play (`applyChallenge`); its author then decides — *stand by* (play
+  stands, no penalty to either side) or *withdraw* (`respondToChallenge` reverts
+  it exactly and the author replays the turn). Two state fields drive it:
+  `lastPlay` (set on every scoring commit — placements + drawn tile ids + score +
+  prior `scorelessTurns`, everything needed for an exact revert) and `challenge`
+  (`{by, against}`, which pauses all other actions until answered via
+  `assertActive`). Only the previous play is challengeable: `lastPlay` is replaced
+  on the next commit and cleared by any pass/exchange, so a non-scoring action
+  *accepts* the play. Both fields are plain objects/null — Firestore-safe, no
+  reshape. In `?test` mode the host answers for the challenged seat (the respond
+  action takes the responder's uid explicitly).
 - **Board mid-turn edits are optimistic.** You can drag committed table tiles
   around locally; illegality (e.g. taking a table tile into hand before opening)
   is rejected on **Commit** by `validateCommit`, surfaced as an error. A
@@ -177,7 +191,7 @@ as-is, so there's no reshape, and the member-only `draft` rule is reused.
 
 ```bash
 npm run dev:all     # emulators + Vite together (main dev loop)
-npm test            # Vitest (Numbers + Words engines + state); 58 tests
+npm test            # Vitest (Numbers + Words engines + state); 65 tests
 npm run typecheck   # tsc -b, must stay clean
 npm run build       # production build
 node scripts/smoke.mjs   # end-to-end sync test (needs emulators running)
