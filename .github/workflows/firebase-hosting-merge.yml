@@ -62,6 +62,15 @@ jobs:
         run: |
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          if [ -z "$VAPID_PUBLIC_KEY" ]; then
+            echo "::error::VITE_VAPID_PUBLIC_KEY secret is empty — set it in repo settings"
+            exit 1
+          fi
+          # defineString() params are resolved from a dotenv file at deploy, NOT
+          # from shell env vars — so write functions/.env (gitignored, ephemeral
+          # on the runner) for the deploy to read. The private key stays in
+          # Secret Manager (bound via defineSecret).
+          printf 'VAPID_PUBLIC_KEY=%s\nVAPID_SUBJECT=%s\n' "$VAPID_PUBLIC_KEY" "$VAPID_SUBJECT" > functions/.env
           npx -y firebase-tools@^15.22.3 deploy --only functions --project rummle-prod --non-interactive --force
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_RUMMLE_PROD }}

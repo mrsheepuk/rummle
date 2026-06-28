@@ -194,9 +194,16 @@ workflows, so only two repository secrets are needed.
      not actually secret — it ships in the client bundle — but kept as a secret
      to match the others). It's consumed by both the client build and the
      function's `VAPID_PUBLIC_KEY` param.
+   - The function's `VAPID_PUBLIC_KEY` / `VAPID_SUBJECT` params are read from a
+     **dotenv file** at deploy (not shell env vars), so create `functions/.env`:
+     ```
+     VAPID_PUBLIC_KEY=<your public key>
+     VAPID_SUBJECT=mailto:you@example.com
+     ```
+     (It's gitignored. CI writes the same file from the repo secret.)
    - Do the first functions deploy locally to enable the APIs and bind the
-     secret: `VAPID_PUBLIC_KEY=<public> firebase deploy --only functions --project prod`.
-     After that the merge workflow's `deploy_functions` job handles it.
+     secret: `firebase deploy --only functions --project prod`. After that the
+     merge workflow's `deploy_functions` job handles it.
 
 Until the secrets exist the two Firebase workflows fail (expected); the
 `ci.yml` check passes regardless. If you rename the project, update the
