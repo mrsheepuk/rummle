@@ -8,7 +8,7 @@
 // notifications. The uid must be the real authenticated uid (not a ?test seat),
 // since a push subscription is tied to the signed-in account.
 
-import { ensureServiceWorker, setNotifyEnabled } from "./notifications";
+import { ensureServiceWorker, notifyEnabled, setNotifyEnabled } from "./notifications";
 import { subscribeToPush, unsubscribeFromPush } from "../sync/push";
 
 /** Returns whether notifications ended up enabled (permission granted). */
@@ -24,6 +24,24 @@ export async function enableTurnNotifications(uid: string): Promise<boolean> {
     }
   }
   return true;
+}
+
+/**
+ * Self-heal on app load: if the player has notifications enabled, make sure a
+ * current push subscription exists for this device. Covers the cases where an
+ * earlier subscribe never landed (rules not yet deployed, a build without the
+ * VAPID key) or the endpoint has since expired/rotated — `subscribeToPush`
+ * reuses an existing subscription, so this is idempotent and cheap.
+ */
+export async function resubscribeIfEnabled(uid: string): Promise<void> {
+  if (!notifyEnabled()) return;
+  const reg = await ensureServiceWorker();
+  if (!reg) return;
+  try {
+    await subscribeToPush(uid, reg);
+  } catch {
+    /* push is optional; in-tab notifications still work */
+  }
 }
 
 export async function disableTurnNotifications(uid: string): Promise<void> {

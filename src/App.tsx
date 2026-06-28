@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { APP_NAME } from "./constants";
 import { debugEnabled } from "./sync/connectionLog";
+import { resubscribeIfEnabled } from "./ui/notificationActions";
 import { useAuth } from "./ui/useAuth";
 import { useGame } from "./ui/useGame";
 import { useReconnectOnResume } from "./ui/useReconnectOnResume";
@@ -22,6 +24,12 @@ export function App() {
   // Reconnect after a long background (a frozen tab kills the stream silently);
   // quick tab switches stay under the threshold and are left untouched.
   useReconnectOnResume();
+
+  // Once signed in, ensure an opted-in player has a live push subscription —
+  // self-heals a subscribe that failed before (rules/key) or an expired one.
+  useEffect(() => {
+    if (user) void resubscribeIfEnabled(user.uid);
+  }, [user?.uid]);
 
   return (
     <>

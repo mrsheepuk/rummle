@@ -65,6 +65,10 @@ export const onTurnChange = onDocumentUpdated(
 
     const subDoc = await db.collection("pushSubs").doc(activeUid).get();
     const subs = (subDoc.data()?.subscriptions ?? []) as StoredSub[];
+
+    // One readable line per handoff so a quiet log is diagnosable: did the
+    // trigger fire, who's up, and do they have any device subscribed?
+    logger.info(`turn ${before.currentTurn}→${after.currentTurn} game=${gameId} active=${activeUid} subs=${subs.length}`);
     if (subs.length === 0) return;
 
     webpush.setVapidDetails(VAPID_SUBJECT.value(), VAPID_PUBLIC_KEY.value(), VAPID_PRIVATE_KEY.value());
@@ -90,6 +94,8 @@ export const onTurnChange = onDocumentUpdated(
         }
       }),
     );
+
+    logger.info(`sent ${subs.length - dead.length}/${subs.length} push(es) to ${activeUid}`);
 
     if (dead.length > 0) {
       const remaining = subs.filter((s) => !dead.includes(s.endpoint));
