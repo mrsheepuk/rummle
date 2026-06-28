@@ -184,11 +184,42 @@ workflows, so only two repository secrets are needed.
    console: Project settings → Your apps → SDK config):
    `VITE_FIREBASE_API_KEY` and `VITE_FIREBASE_APP_ID`.
 4. Deploy the security rules once: `firebase deploy --only firestore:rules --project prod`.
+5. **Turn-notification push** (needs the **Blaze** plan — Cloud Functions). Generate a
+   VAPID keypair and wire both halves up:
+   ```bash
+   npx web-push generate-vapid-keys          # prints a public + private key
+   firebase functions:secrets:set VAPID_PRIVATE_KEY --project prod   # paste the private key
+   ```
+   - Add the **public** key as the repo secret **`VITE_VAPID_PUBLIC_KEY`** (it's
+     not actually secret — it ships in the client bundle — but kept as a secret
+     to match the others). It's consumed by both the client build and the
+     function's `VAPID_PUBLIC_KEY` param.
+   - Do the first functions deploy locally to enable the APIs and bind the
+     secret: `VAPID_PUBLIC_KEY=<public> firebase deploy --only functions --project prod`.
+     After that the merge workflow's `deploy_functions` job handles it.
 
 Until the secrets exist the two Firebase workflows fail (expected); the
 `ci.yml` check passes regardless. If you rename the project, update the
 hardcoded `rummle-prod` / secret name in the two `firebase-hosting-*.yml`
 workflows.
+
+## "Your turn" notifications
+
+Players can opt in (a one-time prompt on entering a game, or the game menu) to be
+notified when the turn passes to them. Two layers cover it:
+
+- **In-tab** — fires from the running page (via the service worker, since mobile
+  browsers forbid the `new Notification()` constructor) whenever the tab is alive
+  but unfocused: another tab, another window, a backgrounded phone. No backend.
+- **Web Push** — a Firestore-triggered Cloud Function (`functions/`) watches every
+  game and pushes to the player whose turn it became, so it lands **even with the
+  tab closed**. Standard Web Push (VAPID), keyed off the shared envelope fields,
+  so one function serves both games. Subscriptions live in `pushSubs/{uid}`.
+
+Both paths only ping when you're not already looking, and share a notification
+`tag` so they never double up. **iOS** only delivers either kind to a PWA added
+to the home screen (16.4+) — hence the web-app manifest. Everything degrades
+gracefully: no VAPID key → in-tab only; an unsupported browser → silent.
 
 ## Cheat safety (current trade-off)
 

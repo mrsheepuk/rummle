@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { APP_NAME } from "./constants";
 import { debugEnabled } from "./sync/connectionLog";
+import { resubscribeIfEnabled } from "./ui/notificationActions";
 import { useAuth } from "./ui/useAuth";
 import { useGame } from "./ui/useGame";
 import { useReconnectOnResume } from "./ui/useReconnectOnResume";
@@ -10,6 +12,7 @@ import { JoinPrompt } from "./ui/JoinPrompt";
 import { GameView } from "./ui/GameView";
 import { WordsGameView } from "./games/words/ui/WordsGameView";
 import { DebugOverlay } from "./ui/DebugOverlay";
+import { NotifyPrompt } from "./ui/NotifyPrompt";
 
 export function App() {
   const { gameId, goToGame, goHome } = useRoute();
@@ -21,6 +24,12 @@ export function App() {
   // Reconnect after a long background (a frozen tab kills the stream silently);
   // quick tab switches stay under the threshold and are left untouched.
   useReconnectOnResume();
+
+  // Once signed in, ensure an opted-in player has a live push subscription —
+  // self-heals a subscribe that failed before (rules/key) or an expired one.
+  useEffect(() => {
+    if (user) void resubscribeIfEnabled(user.uid);
+  }, [user?.uid]);
 
   return (
     <>
@@ -69,10 +78,21 @@ export function App() {
     if (game.status === "lobby") {
       return <Lobby game={game} me={user.uid} onLeave={goHome} />;
     }
-    if (game.gameType === "words") {
-      return <WordsGameView game={game} me={user.uid} onLeave={goHome} stale={stale} />;
-    }
-    return <GameView game={game} me={user.uid} onLeave={goHome} stale={stale} />;
+    // The priming dialog rides above whichever game view is active; it only
+    // surfaces once per browser and never in the one-host ?test harness.
+    const testMode = new URLSearchParams(location.search).has("test");
+    const view =
+      game.gameType === "words" ? (
+        <WordsGameView game={game} me={user.uid} onLeave={goHome} stale={stale} />
+      ) : (
+        <GameView game={game} me={user.uid} onLeave={goHome} stale={stale} />
+      );
+    return (
+      <>
+        {view}
+        <NotifyPrompt uid={user.uid} active={game.status === "playing" && !testMode} />
+      </>
+    );
   }
 }
 

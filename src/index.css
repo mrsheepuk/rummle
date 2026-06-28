@@ -674,6 +674,46 @@ input:focus {
   color: var(--primary);
 }
 
+/* ----- Notification priming dialog ----- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(20, 14, 4, 0.55);
+}
+
+.notify-card {
+  text-align: center;
+  animation: notify-pop 160ms ease-out;
+}
+
+.notify-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.notify-card .notify-hint {
+  font-size: 0.85rem;
+}
+
+@keyframes notify-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notify-card {
+    animation: none;
+  }
+}
+
 .winner-banner {
   background: linear-gradient(120deg, var(--green), var(--accent));
   color: #1a1208;
@@ -696,6 +736,38 @@ input:focus {
   text-align: center;
   padding: 0.5rem 0.8rem;
   border-radius: 12px;
+}
+
+/* ----- Install (PWA) banner on Home ----- */
+.install-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.6rem 0.7rem 0.6rem 0.9rem;
+  width: 100%;
+  max-width: 380px;
+}
+
+.install-text {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.install-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: none;
+}
+
+.install-dismiss {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .offline-dot {
@@ -800,9 +872,7 @@ input:focus {
 }
 
 .dbg-log li {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .dbg-log code {

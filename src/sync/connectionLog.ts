@@ -13,6 +13,7 @@ export type ConnEventKind =
   | "offline" // browser lost network
   | "resync" // forceResync lifecycle (start/done/skip)
   | "probe" // manual server read result
+  | "notify" // "your turn" notification decision (gate + outcome)
   | "note"; // ad-hoc marker
 
 export interface ConnEvent {

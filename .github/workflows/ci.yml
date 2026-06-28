@@ -23,3 +23,7 @@ jobs:
       # Build with the demo/emulator fallback config so this check needs no
       # secrets — it verifies the app compiles and bundles on every PR.
       - run: npm run build
+      # Typecheck + build the Cloud Functions too, so a broken function is caught
+      # on the PR rather than only at deploy time.
+      - run: npm --prefix functions ci
+      - run: npm --prefix functions run build

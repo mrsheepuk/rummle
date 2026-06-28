@@ -6,6 +6,7 @@ import { joinAnyGame } from "../games/registry";
 import { GAME_LABELS, type GameType } from "../platform/model";
 import { CODE_LENGTH, normalizeCode } from "../sync/codes";
 import { MyGames } from "./MyGames";
+import { InstallBanner } from "./Install";
 
 export function Home({ uid, onEnterGame }: { uid: string; onEnterGame: (id: string) => void }) {
   const [name, setName] = useState(localStorage.getItem(NAME_KEY) ?? "");
@@ -53,6 +54,8 @@ export function Home({ uid, onEnterGame }: { uid: string; onEnterGame: (id: stri
         <h1 className="logo">{APP_NAME}</h1>
         <p className="tagline">{APP_TAGLINE}</p>
       </header>
+
+      <InstallBanner />
 
       <div className="card">
         <label className="field">

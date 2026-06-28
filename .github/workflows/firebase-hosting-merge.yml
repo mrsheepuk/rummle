@@ -36,6 +36,7 @@ jobs:
           VITE_FIREBASE_AUTH_DOMAIN: rummle-prod.firebaseapp.com
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
@@ -44,3 +45,25 @@ jobs:
           channelId: live
           # >=15.22.3 carries the keep-alive premature-close mitigations.
           firebaseToolsVersion: ^15.22.3
+
+  # Deploy the turn-change Cloud Function. A separate job so a functions hiccup
+  # never blocks the hosting release (and vice versa). The predeploy hook in
+  # firebase.json installs + builds functions/; VAPID_PRIVATE_KEY is read from
+  # Secret Manager at runtime, so it isn't needed at deploy time.
+  deploy_functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.22.0
+          cache: npm
+      - name: Deploy Cloud Functions
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npx -y firebase-tools@^15.22.3 deploy --only functions --project rummle-prod --non-interactive --force
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_RUMMLE_PROD }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
+          VAPID_SUBJECT: mailto:notifications@rummle.app
